@@ -182,6 +182,9 @@ public: /* Methods: */
 
     std::string interpolate(std::string const & value) const;
 
+    static std::vector<std::string> defaultSharemindToolTryPaths(
+            std::string const & configName);
+
 private: /* Methods: */
 
     Configuration(std::shared_ptr<std::string const> path,

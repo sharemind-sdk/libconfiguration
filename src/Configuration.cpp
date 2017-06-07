@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
+#include <sharemind/XdgBaseDirectory.h>
 #include <streambuf>
 #include <sys/stat.h>
 #include <system_error>
@@ -274,6 +275,15 @@ void Configuration::erase(std::string const & key) noexcept
 
 std::string Configuration::interpolate(std::string const & value) const
 { return m_inner->interpolation(value); }
+
+std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
+        std::string const & configName)
+{
+    std::string suffix("/sharemind/" + configName + ".conf");
+    std::vector<std::string> r(getXdgConfigPaths(suffix));
+    r.emplace_back("/etc" + std::move(suffix));
+    return r;
+}
 
 std::string Configuration::composePath(std::string const & path) const {
     if (!m_path)
