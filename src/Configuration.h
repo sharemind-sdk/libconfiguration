@@ -115,8 +115,6 @@ public: /* Types: */
 
     };
 
-public: /* Types: */
-
     using Iterator =
             boost::transform_iterator<
                 IteratorTransformer,
