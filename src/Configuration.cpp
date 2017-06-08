@@ -23,11 +23,13 @@
 #include <boost/iostreams/stream.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/xpressive/xpressive_static.hpp>
 #include <cassert>
 #include <fcntl.h>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
 #include <sharemind/XdgBaseDirectory.h>
+#include <sstream>
 #include <streambuf>
 #include <sys/stat.h>
 #include <system_error>
@@ -93,7 +95,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 /* Methods: */
 
     Inner(std::vector<std::string> const & tryPaths,
-          ConfigurationInterpolation interpolation_)
+          Interpolation interpolation_)
         : interpolation(std::move(interpolation_))
     {
         for (auto const & path : tryPaths) {
@@ -117,7 +119,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     }
 
     Inner(std::string const & filename,
-          ConfigurationInterpolation interpolation_)
+          Interpolation interpolation_)
         : interpolation(std::move(interpolation_))
     {
         FailedToOpenAndParseConfigurationException exception(filename);
@@ -132,7 +134,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         PosixFileInputSource inFile(path);
         boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
         boost::property_tree::read_ini(inStream, ptree);
-        interpolation.addVar(
+        interpolation.addVariable(
                 "CurrentFileDirectory",
                 boost::filesystem::canonical(
                     boost::filesystem::path(
@@ -142,7 +144,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
 /* Fields: */
 
-    ConfigurationInterpolation interpolation;
+    Interpolation interpolation;
     boost::property_tree::ptree ptree;
     std::string filename;
 
@@ -203,6 +205,51 @@ Configuration Configuration::IteratorTransformer::operator()(
     }
 }
 
+std::string Configuration::Interpolation::interpolate(std::string const & s)
+        const
+{
+    namespace xp = boost::xpressive;
+
+    /* "([^%]|^)%\{([a-zA-Z\.]+)\}" */
+    static xp::sregex const re =
+        xp::imbue(std::locale("POSIX"))(
+            (xp::bos | ~(xp::set= '%')) >>
+            xp::as_xpr('%') >> '{' >>
+            (xp::s1= + xp::set[ xp::range('a', 'z') |
+                                xp::range('A', 'Z') |
+                                '.' ]) >>
+            '}');
+
+    auto sIt(s.cbegin());
+    std::stringstream ss;
+
+    xp::sregex_iterator const reEnd;
+    for (xp::sregex_iterator reIt(s.cbegin(), s.cend(), re);
+         reIt != reEnd;
+         ++reIt)
+    {
+        auto const & match = *reIt;
+
+        auto const it(m_map.find(match[1].str()));
+        if (it == m_map.cend())
+            throw UnknownVariableException();
+
+        if (match[0].first != s.cbegin())
+            ss.write(&*sIt, match[0].first + 1 - sIt);
+
+        ss << it->second;
+        sIt = match[0].second;
+    }
+    if (sIt != s.end())
+        ss.write(&*sIt, s.end() - sIt);
+
+    return ss.str();
+}
+
+void Configuration::Interpolation::addVariable(std::string var,
+                                               std::string value)
+{ m_map.emplace(std::move(var), std::move(value)); }
+
 Configuration::Configuration(Configuration && move)
     : m_path(std::move(move.m_path))
     , m_inner(std::move(move.m_inner))
@@ -216,21 +263,21 @@ Configuration::Configuration(Configuration const & copy)
 {}
 
 Configuration::Configuration(std::string const & filename)
-    : Configuration(filename, ConfigurationInterpolation())
+    : Configuration(filename, Interpolation())
 {}
 
 Configuration::Configuration(std::vector<std::string> const & tryPaths)
-    : Configuration(tryPaths, ConfigurationInterpolation())
+    : Configuration(tryPaths, Interpolation())
 {}
 
 Configuration::Configuration(std::string const & filename,
-                             ConfigurationInterpolation interpolation)
+                             Interpolation interpolation)
     : m_inner(std::make_shared<Inner>(filename, std::move(interpolation)))
     , m_ptree(&m_inner->ptree)
 {}
 
 Configuration::Configuration(std::vector<std::string> const & tryPaths,
-                             ConfigurationInterpolation interpolation)
+                             Interpolation interpolation)
     : m_inner(std::make_shared<Inner>(tryPaths, std::move(interpolation)))
     , m_ptree(&m_inner->ptree)
 {}
@@ -245,6 +292,13 @@ Configuration::Configuration(std::shared_ptr<std::string const> path,
 {}
 
 Configuration::~Configuration() noexcept {}
+
+Configuration::Interpolation & Configuration::interpolation() noexcept
+{ return m_inner->interpolation; }
+
+Configuration::Interpolation const & Configuration::interpolation()
+        const noexcept
+{ return m_inner->interpolation; }
 
 std::string const & Configuration::filename() const noexcept
 { return m_inner->filename; }
@@ -274,7 +328,7 @@ void Configuration::erase(std::string const & key) noexcept
 { m_ptree->erase(key); }
 
 std::string Configuration::interpolate(std::string const & value) const
-{ return m_inner->interpolation(value); }
+{ return m_inner->interpolation.interpolate(value); }
 
 std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
         std::string const & configName)

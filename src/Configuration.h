@@ -24,11 +24,11 @@
 #include <boost/property_tree/ptree.hpp>
 #include <exception>
 #include <memory>
-#include <sharemind/ConfigurationInterpolation.h>
 #include <sharemind/Exception.h>
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 
 namespace sharemind {
@@ -72,6 +72,10 @@ public: /* Types: */
             Exception,
             NoValidConfigurationFileFound,
             "No valid configuration file found!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            Exception,
+            UnknownVariableException,
+            "Unknown configuration interpolation variable!");
 
     class FailedToOpenAndParseConfigurationException: public Exception {
 
@@ -120,6 +124,20 @@ public: /* Types: */
                 IteratorTransformer,
                 boost::property_tree::ptree::iterator>;
 
+    class Interpolation {
+
+    public: /* Methods: */
+
+        std::string interpolate(std::string const & s) const;
+
+        void addVariable(std::string var, std::string value);
+
+    private: /* Fields: */
+
+        std::unordered_map<std::string, std::string> m_map;
+
+    }; /* class Interpolation */
+
 public: /* Methods: */
 
     Configuration(Configuration && move);
@@ -129,13 +147,15 @@ public: /* Methods: */
 
     Configuration(std::vector<std::string> const & tryPaths);
 
-    Configuration(std::string const & filename,
-                  ConfigurationInterpolation interpolation);
+    Configuration(std::string const & filename, Interpolation interpolation);
 
     Configuration(std::vector<std::string> const & tryPaths,
-                  ConfigurationInterpolation interpolation);
+                  Interpolation interpolation);
 
     virtual ~Configuration() noexcept;
+
+    Interpolation & interpolation() noexcept;
+    Interpolation const & interpolation() const noexcept;
 
     std::string const & filename() const noexcept;
 
