@@ -19,7 +19,7 @@
 
 SET(PACKAGE_VERSION "@SHAREMIND_LIBCONFIGURATION_VERSION@")
 IF(NOT SharemindLibConfiguration_QUIET)
-    MESSAGE(STATUS "Sharemind Configurationness library version: ${PACKAGE_VERSION}")
+    MESSAGE(STATUS "Sharemind Configuration library version: ${PACKAGE_VERSION}")
 ENDIF()
 
 IF("${PACKAGE_VERSION}" VERSION_LESS "${PACKAGE_FIND_VERSION}")
