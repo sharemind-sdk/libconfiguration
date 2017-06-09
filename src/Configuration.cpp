@@ -23,13 +23,11 @@
 #include <boost/iostreams/stream.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
-#include <boost/xpressive/xpressive_static.hpp>
 #include <cassert>
 #include <fcntl.h>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
 #include <sharemind/XdgBaseDirectory.h>
-#include <sstream>
 #include <streambuf>
 #include <sys/stat.h>
 #include <system_error>
@@ -95,7 +93,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 /* Methods: */
 
     Inner(std::vector<std::string> const & tryPaths,
-          Interpolation interpolation_)
+          std::shared_ptr<Interpolation> interpolation_)
         : interpolation(std::move(interpolation_))
     {
         for (auto const & path : tryPaths) {
@@ -119,7 +117,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     }
 
     Inner(std::string const & filename,
-          Interpolation interpolation_)
+          std::shared_ptr<Interpolation> interpolation_)
         : interpolation(std::move(interpolation_))
     {
         FailedToOpenAndParseConfigurationException exception(filename);
@@ -134,7 +132,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         PosixFileInputSource inFile(path);
         boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
         boost::property_tree::read_ini(inStream, ptree);
-        interpolation.addVariable(
+        interpolation->addVariable(
                 "CurrentFileDirectory",
                 boost::filesystem::canonical(
                     boost::filesystem::path(
@@ -144,7 +142,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
 /* Fields: */
 
-    Interpolation interpolation;
+    std::shared_ptr<Interpolation> interpolation;
     boost::property_tree::ptree ptree;
     std::string filename;
 
@@ -205,50 +203,96 @@ Configuration Configuration::IteratorTransformer::operator()(
     }
 }
 
+Configuration::Interpolation::Interpolation()
+    : m_time(Configuration::getLocalTimeTm())
+{}
+
+Configuration::Interpolation::~Interpolation() noexcept {}
+
 std::string Configuration::Interpolation::interpolate(std::string const & s)
         const
+{ return interpolate(s, Configuration::getLocalTimeTm()); }
+
+std::string Configuration::Interpolation::interpolate(std::string const & s,
+                                                      ::tm const & theTime)
+        const
 {
-    namespace xp = boost::xpressive;
-
-    /* "([^%]|^)%\{([a-zA-Z\.]+)\}" */
-    static xp::sregex const re =
-        xp::imbue(std::locale("POSIX"))(
-            (xp::bos | ~(xp::set= '%')) >>
-            xp::as_xpr('%') >> '{' >>
-            (xp::s1= + xp::set[ xp::range('a', 'z') |
-                                xp::range('A', 'Z') |
-                                '.' ]) >>
-            '}');
-
-    auto sIt(s.cbegin());
-    std::stringstream ss;
-
-    xp::sregex_iterator const reEnd;
-    for (xp::sregex_iterator reIt(s.cbegin(), s.cend(), re);
-         reIt != reEnd;
-         ++reIt)
-    {
-        auto const & match = *reIt;
-
-        auto const it(m_map.find(match[1].str()));
-        if (it == m_map.cend())
-            throw UnknownVariableException();
-
-        if (match[0].first != s.cbegin())
-            ss.write(&*sIt, match[0].first + 1 - sIt);
-
-        ss << it->second;
-        sIt = match[0].second;
+    std::string r;
+    r.reserve(s.size());
+    char format[3] = "% ";
+    char buffer[32] = "";
+    for (auto it = s.cbegin(); it != s.cend(); ++it) {
+        if (*it != '%') { // Handle regular characters:
+            auto const start(it); // Regular characters range start
+            do {
+                ++it;
+                if (it == s.cend()) {
+                    r.insert(r.end(), start, it);
+                    return r;
+                }
+            } while (*it != '%');
+            r.insert(r.end(), start, it);
+        }
+        assert(*it == '%');
+        // Handle escapes
+        if (++it == s.cend())
+            throw InterpolationSyntaxErrorException();
+        switch (*it) {
+        case '%': r.push_back('%'); break;
+        case 'C': case 'd': case 'D': case 'e': case 'F': case 'H':
+        case 'I': case 'j': case 'm': case 'M': case 'p': case 'R':
+        case 'S': case 'T': case 'u': case 'U': case 'V': case 'w':
+        case 'W': case 'y': case 'Y': case 'z': {
+            format[1u] = *it;
+            if (strftime(buffer, 32u, format, &theTime)) {
+                r.append(buffer);
+            } else {
+                throw StrftimeException();
+            }
+            break;
+        }
+        case '{': {
+            ++it;
+            auto const start(it); // Start of range between curly braces
+            for (;; ++it) {
+                if (it == s.cend())
+                    throw InterpolationSyntaxErrorException();
+                switch (*it) {
+                case '%': case '{':
+                    throw InterpolationSyntaxErrorException();
+                case '}':
+                    break;
+                default: // All other characters allowed between {}
+                    continue;
+                }
+                // Do the replacement:
+                auto const matchIt(m_map.find(std::string(start, it)));
+                if (matchIt == m_map.cend())
+                    throw UnknownVariableException();
+                r.append(matchIt->second);
+                break;
+            }
+            break;
+        }
+        default:
+            throw InvalidInterpolationException();
+        }
     }
-    if (sIt != s.end())
-        ss.write(&*sIt, s.end() - sIt);
-
-    return ss.str();
+    return r;
 }
 
 void Configuration::Interpolation::addVariable(std::string var,
                                                std::string value)
 { m_map.emplace(std::move(var), std::move(value)); }
+
+void Configuration::Interpolation::resetTime()
+{ return resetTime(Configuration::getLocalTimeTm()); }
+
+void Configuration::Interpolation::resetTime(std::time_t theTime)
+{ return resetTime(Configuration::getLocalTimeTm(theTime)); }
+
+void Configuration::Interpolation::resetTime(::tm const & theTime)
+{ m_time = theTime; }
 
 Configuration::Configuration(Configuration && move)
     : m_path(std::move(move.m_path))
@@ -263,21 +307,21 @@ Configuration::Configuration(Configuration const & copy)
 {}
 
 Configuration::Configuration(std::string const & filename)
-    : Configuration(filename, Interpolation())
+    : Configuration(filename, std::make_shared<Interpolation>())
 {}
 
 Configuration::Configuration(std::vector<std::string> const & tryPaths)
-    : Configuration(tryPaths, Interpolation())
+    : Configuration(tryPaths, std::make_shared<Interpolation>())
 {}
 
 Configuration::Configuration(std::string const & filename,
-                             Interpolation interpolation)
+                             std::shared_ptr<Interpolation> interpolation)
     : m_inner(std::make_shared<Inner>(filename, std::move(interpolation)))
     , m_ptree(&m_inner->ptree)
 {}
 
 Configuration::Configuration(std::vector<std::string> const & tryPaths,
-                             Interpolation interpolation)
+                             std::shared_ptr<Interpolation> interpolation)
     : m_inner(std::make_shared<Inner>(tryPaths, std::move(interpolation)))
     , m_ptree(&m_inner->ptree)
 {}
@@ -293,12 +337,12 @@ Configuration::Configuration(std::shared_ptr<std::string const> path,
 
 Configuration::~Configuration() noexcept {}
 
-Configuration::Interpolation & Configuration::interpolation() noexcept
+std::shared_ptr<Configuration::Interpolation> const &
+Configuration::interpolation() const noexcept
 { return m_inner->interpolation; }
 
-Configuration::Interpolation const & Configuration::interpolation()
-        const noexcept
-{ return m_inner->interpolation; }
+void Configuration::setInterpolation(std::shared_ptr<Interpolation> i) noexcept
+{ m_inner->interpolation = std::move(i); }
 
 std::string const & Configuration::filename() const noexcept
 { return m_inner->filename; }
@@ -328,7 +372,11 @@ void Configuration::erase(std::string const & key) noexcept
 { m_ptree->erase(key); }
 
 std::string Configuration::interpolate(std::string const & value) const
-{ return m_inner->interpolation.interpolate(value); }
+{ return m_inner->interpolation->interpolate(value); }
+
+std::string Configuration::interpolate(std::string const & value,
+                                       ::tm const & theTime) const
+{ return m_inner->interpolation->interpolate(value, theTime); }
 
 std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
         std::string const & configName)
@@ -337,6 +385,17 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
     std::vector<std::string> r(getXdgConfigPaths(suffix));
     r.emplace_back("/etc" + std::move(suffix));
     return r;
+}
+
+::tm Configuration::getLocalTimeTm() { return getLocalTimeTm(::time(nullptr)); }
+
+::tm Configuration::getLocalTimeTm(std::time_t const theTime) {
+    if (theTime == std::time_t(-1))
+        throw TimeException();
+    ::tm theTimeTm;
+    if (!localtime_r(&theTime, &theTimeTm))
+        throw LocalTimeException();
+    return theTimeTm;
 }
 
 std::string Configuration::composePath(std::string const & path) const {

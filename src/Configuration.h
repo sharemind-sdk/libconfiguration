@@ -22,6 +22,7 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <ctime>
 #include <exception>
 #include <memory>
 #include <sharemind/Exception.h>
@@ -72,10 +73,31 @@ public: /* Types: */
             Exception,
             NoValidConfigurationFileFound,
             "No valid configuration file found!");
+    SHAREMIND_DEFINE_EXCEPTION(Exception, InterpolationException);
     SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            Exception,
+            InterpolationException,
             UnknownVariableException,
             "Unknown configuration interpolation variable!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            InterpolationException,
+            InterpolationSyntaxErrorException,
+            "Interpolation syntax error!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            InterpolationException,
+            InvalidInterpolationException,
+            "Invalid interpolation given!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            InterpolationException,
+            TimeException,
+            "time() failed!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            InterpolationException,
+            LocalTimeException,
+            "localtime_r() failed!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            InterpolationException,
+            StrftimeException,
+            "strftime() failed!");
 
     class FailedToOpenAndParseConfigurationException: public Exception {
 
@@ -128,13 +150,23 @@ public: /* Types: */
 
     public: /* Methods: */
 
+        Interpolation();
+        virtual ~Interpolation() noexcept;
+
         std::string interpolate(std::string const & s) const;
+        std::string interpolate(std::string const & s,
+                                ::tm const & theTime) const;
 
         void addVariable(std::string var, std::string value);
+
+        void resetTime();
+        void resetTime(std::time_t theTime);
+        void resetTime(::tm const & theTime);
 
     private: /* Fields: */
 
         std::unordered_map<std::string, std::string> m_map;
+        ::tm m_time;
 
     }; /* class Interpolation */
 
@@ -147,15 +179,16 @@ public: /* Methods: */
 
     Configuration(std::vector<std::string> const & tryPaths);
 
-    Configuration(std::string const & filename, Interpolation interpolation);
+    Configuration(std::string const & filename,
+                  std::shared_ptr<Interpolation> interpolation);
 
     Configuration(std::vector<std::string> const & tryPaths,
-                  Interpolation interpolation);
+                  std::shared_ptr<Interpolation> interpolation);
 
     virtual ~Configuration() noexcept;
 
-    Interpolation & interpolation() noexcept;
-    Interpolation const & interpolation() const noexcept;
+    std::shared_ptr<Interpolation> const & interpolation() const noexcept;
+    void setInterpolation(std::shared_ptr<Interpolation> i) noexcept;
 
     std::string const & filename() const noexcept;
 
@@ -199,9 +232,14 @@ public: /* Methods: */
     void erase(std::string const & key) noexcept;
 
     std::string interpolate(std::string const & value) const;
+    std::string interpolate(std::string const & value,
+                            ::tm const & theTime) const;
 
     static std::vector<std::string> defaultSharemindToolTryPaths(
             std::string const & configName);
+
+    static ::tm getLocalTimeTm();
+    static ::tm getLocalTimeTm(std::time_t theTime);
 
 private: /* Methods: */
 
