@@ -301,7 +301,7 @@ Configuration::Configuration(Configuration && move)
 {}
 
 Configuration::Configuration(Configuration const & copy)
-    : m_path(!copy.m_path ? nullptr : throw NonRootCopy())
+    : m_path(!copy.m_path ? nullptr : throw NonRootCopyException())
     , m_inner(std::make_shared<Inner>(*copy.m_inner))
     , m_ptree(&m_inner->ptree)
 {}

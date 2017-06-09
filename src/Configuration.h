@@ -66,7 +66,7 @@ public: /* Types: */
     SHAREMIND_DEFINE_EXCEPTION(sharemind::Exception, Exception);
     SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
             Exception,
-            NonRootCopy,
+            NonRootCopyException,
             "Copying a non-root Configuration object is not currently "
             "supported!");
     SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
