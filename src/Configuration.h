@@ -26,7 +26,10 @@
 #include <exception>
 #include <memory>
 #include <sharemind/Exception.h>
+#include <sharemind/TemplateFirstType.h>
+#include <sharemind/TemplateContainsType.h>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <unordered_map>
@@ -218,8 +221,40 @@ public: /* Methods: */
         return parseValue<T>(*child, fullPath);
     }
 
+    template <typename T, typename Default>
+    typename std::enable_if<std::is_same<typename std::remove_cv<T>::type,
+                                         std::size_t>::value,
+                            T>::type
+    get(std::string const & path, Default && defaultValue) const
+    { return getSizeValue(path, std::forward<Default>(defaultValue)); }
+
     template <typename T, typename ... Args>
-    T get(std::string const & path, Args && ... defaultValueArgs) const {
+    typename std::enable_if<
+            std::is_same<T, std::string>::value
+            && (sizeof...(Args) == 1u)
+            && (TemplateContainsType<
+                        typename std::decay<TemplateFirstType<Args...> >::type,
+                        char const *,
+                        char *,
+                        std::string>::value),
+            T>::type
+    get(std::string const & path, Args && ... defaultValueArgs) const
+    { return getStringValue(path, std::forward<Args>(defaultValueArgs)...); }
+
+    template <typename T, typename ... Args>
+    typename std::enable_if<
+            (sizeof...(Args) > 0u)
+            && !std::is_same<typename std::remove_cv<T>::type,
+                             std::size_t>::value
+            && !(std::is_same<T, std::string>::value
+                 && (sizeof...(Args) == 1u)
+                 && (TemplateContainsType<
+                         typename std::decay<TemplateFirstType<Args...> >::type,
+                         char const *,
+                         char *,
+                         std::string>::value)),
+            T>::type
+    get(std::string const & path, Args && ... defaultValueArgs) const {
         decltype(std::addressof(m_ptree->get_child(path))) child;
         try {
             child = std::addressof(m_ptree->get_child(path));
@@ -249,6 +284,11 @@ private: /* Methods: */
 
     std::string composePath(std::string const & path) const;
 
+    std::size_t getSizeValue(std::string const &, std::size_t) const;
+    std::string getStringValue(std::string const &, char const *) const;
+    std::string getStringValue(std::string const &, std::string const &) const;
+    std::string getStringValue(std::string const &, std::string && v) const;
+
     template <typename T>
     T parseValue(boost::property_tree::ptree const & ptree,
                  std::string const & fullPath) const
@@ -263,7 +303,6 @@ private: /* Methods: */
             std::throw_with_nested(std::move(parseException));
         }
     }
-
 private: /* Fields: */
 
     std::shared_ptr<std::string const> m_path;
@@ -271,6 +310,21 @@ private: /* Fields: */
     boost::property_tree::ptree * m_ptree;
 
 };
+
+extern template std::string Configuration::value<std::string>() const;
+extern template std::size_t Configuration::value<std::size_t>() const;
+
+extern template std::string Configuration::get<std::string>(
+        std::string const &) const;
+extern template std::size_t Configuration::get<std::size_t>(
+        std::string const &) const;
+
+extern template std::string Configuration::parseValue<std::string>(
+        boost::property_tree::ptree const &,
+        std::string const &) const;
+extern template std::size_t Configuration::parseValue<std::size_t>(
+        boost::property_tree::ptree const &,
+        std::string const &) const;
 
 } /* namespace sharemind { */
 

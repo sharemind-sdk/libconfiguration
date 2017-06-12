@@ -405,4 +405,33 @@ std::string Configuration::composePath(std::string const & path) const {
     return (*m_path) + '.' + path;
 }
 
+#define GET(name,R,D,...) \
+    R Configuration::name(std::string const & path, D v) const { \
+        decltype(std::addressof(m_ptree->get_child(path))) child; \
+        try { \
+            child = std::addressof(m_ptree->get_child(path)); \
+        } catch (...) { \
+            return __VA_ARGS__; \
+        } \
+        return parseValue<R>(*child, composePath(path)); \
+    }
+
+GET(getSizeValue, std::size_t, std::size_t, v)
+GET(getStringValue, std::string, char const *, v)
+GET(getStringValue, std::string, std::string const &, v)
+GET(getStringValue, std::string, std::string &&, std::move(v))
+
+template std::string Configuration::value<std::string>() const;
+template std::size_t Configuration::value<std::size_t>() const;
+
+template std::string Configuration::get<std::string>(std::string const &) const;
+template std::size_t Configuration::get<std::size_t>(std::string const &) const;
+
+template std::string Configuration::parseValue<std::string>(
+        boost::property_tree::ptree const &,
+        std::string const &) const;
+template std::size_t Configuration::parseValue<std::size_t>(
+        boost::property_tree::ptree const &,
+        std::string const &) const;
+
 } /* namespace sharemind { */
