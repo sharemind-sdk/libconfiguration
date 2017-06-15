@@ -20,11 +20,15 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(SharemindLibConfiguration CXX)
 
+SET(CPACK_PACKAGE_VERSION_MAJOR "0")
+SET(CPACK_PACKAGE_VERSION_MINOR "1")
+SET(CPACK_PACKAGE_VERSION_PATCH "0")
+SET(SHAREMIND_LIBCONFIGURATION_VERSION
+    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
 INCLUDE("${CMAKE_CURRENT_SOURCE_DIR}/config.local" OPTIONAL)
 INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 INCLUDE(CheckCXXSourceCompiles)
-
-SET(SHAREMIND_LIBCONFIGURATION_VERSION "0.1.0")
 
 SET(Boost_USE_STATIC_RUNTIME OFF)
 FIND_PACKAGE(Boost COMPONENTS filesystem iostreams REQUIRED)
@@ -96,10 +100,11 @@ SET_TARGET_PROPERTIES("libconfiguration" PROPERTIES
                       SOVERSION "0.1")
 TARGET_LINK_LIBRARIES("libconfiguration"
                       ${SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES})
-INSTALL(TARGETS "libconfiguration" LIBRARY DESTINATION "lib")
+INSTALL(TARGETS "libconfiguration" LIBRARY DESTINATION "lib" COMPONENT lib)
 
 INSTALL(FILES ${SHAREMIND_LIBCONFIGURATION_HEADERS}
-        DESTINATION "include/sharemind")
+        DESTINATION "include/sharemind"
+        COMPONENT dev)
 
 FILE(GLOB_RECURSE SHAREMIND_LIBCONFIGURATION_INFILES
      "${CMAKE_CURRENT_SOURCE_DIR}/*.in")
@@ -127,12 +132,36 @@ CONFIGURE_FILE(
   @ONLY)
 INSTALL(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfig.cmake"
-  DESTINATION "lib/SharemindLibConfiguration")
+  DESTINATION "lib/SharemindLibConfiguration"
+  COMPONENT dev)
 CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/SharemindLibConfigurationConfigVersion.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfigVersion.cmake"
   @ONLY)
 INSTALL(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfigVersion.cmake"
-  DESTINATION "lib/SharemindLibConfiguration")
+  DESTINATION "lib/SharemindLibConfiguration"
+  COMPONENT dev)
 
+
+# Packaging:
+SET(CPACK_PACKAGE_VENDOR "Cybernetica AS")
+SET(CPACK_PACKAGE_CONTACT "Sharemind packaging <sharemind-packaging@cyber.ee>")
+SET(CPACK_GENERATOR "DEB")
+SET(CPACK_DEBIAN_PACKAGE_NAME "libsharemind-configuration")
+SET(CPACK_DEBIAN_PACKAGE_RELEASE "cyber1")
+SET(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
+SET(CPACK_DEB_COMPONENT_INSTALL "ON")
+SET(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
+
+SET(CPACK_DEBIAN_LIB_PACKAGE_NAME "libsharemind-configuration")
+SET(CPACK_COMPONENT_DEV_DESCRIPTION "Sharemind configuration library development headers")
+SET(CPACK_COMPONENT_LIB_DESCRIPTION "Sharemind configuration library")
+SET(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS
+    "libsharemind-configuration (= ${SHAREMIND_LIBCONFIGURATION_VERSION}), sharemind-cxxheaders (>= 0.1.0), libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libc6-dev (>= 2.19), libstdc++-4.8-dev | libstdc++-4.9-dev | libstdc++-5-dev | libstdc++-6-dev | libstdc++-7-dev")
+SET(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS
+    "libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libstdc++6 (>= 4.8.0), libc6 (>= 2.19)")
+SET(CPACK_DEBIAN_DEV_PACKAGE_SECTION "libdevel")
+SET(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
+SET(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "any")
+INCLUDE(CPack)
