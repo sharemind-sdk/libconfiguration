@@ -158,7 +158,7 @@ SET(CPACK_DEBIAN_LIB_PACKAGE_NAME "libsharemind-configuration")
 SET(CPACK_COMPONENT_DEV_DESCRIPTION "Sharemind configuration library development headers")
 SET(CPACK_COMPONENT_LIB_DESCRIPTION "Sharemind configuration library")
 SET(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS
-    "libsharemind-configuration (= ${SHAREMIND_LIBCONFIGURATION_VERSION}), sharemind-cxxheaders (>= 0.1.0), libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libc6-dev (>= 2.19), libstdc++-4.8-dev | libstdc++-4.9-dev | libstdc++-5-dev | libstdc++-6-dev | libstdc++-7-dev")
+    "libsharemind-configuration (= ${SHAREMIND_LIBCONFIGURATION_VERSION}), sharemind-cxxheaders (>= 0.1.0), libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libc6-dev (>= 2.19), libc++-dev")
 SET(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS
     "libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libstdc++6 (>= 4.8.0), libc6 (>= 2.19)")
 SET(CPACK_DEBIAN_DEV_PACKAGE_SECTION "libdevel")
