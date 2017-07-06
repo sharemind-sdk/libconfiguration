@@ -244,7 +244,7 @@ std::string Configuration::Interpolation::interpolate(std::string const & s,
         case 'S': case 'T': case 'u': case 'U': case 'V': case 'w':
         case 'W': case 'y': case 'Y': case 'z': {
             format[1u] = *it;
-            if (strftime(buffer, 32u, format, &theTime)) {
+            if (std::strftime(buffer, 32u, format, &theTime)) {
                 r.append(buffer);
             } else {
                 throw StrftimeException();
