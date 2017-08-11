@@ -27,11 +27,11 @@
 #include <fcntl.h>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
-#include <sharemind/XdgBaseDirectory.h>
 #include <streambuf>
 #include <sys/stat.h>
 #include <system_error>
 #include <unistd.h>
+#include "XdgBaseDirectory.h"
 
 
 namespace sharemind {
