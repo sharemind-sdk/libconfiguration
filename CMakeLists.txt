@@ -175,5 +175,4 @@ SET(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS
     "libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libstdc++6 (>= 4.8.0), libc6 (>= 2.19)")
 SET(CPACK_DEBIAN_DEV_PACKAGE_SECTION "libdevel")
 SET(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
-SET(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "any")
 INCLUDE(CPack)
