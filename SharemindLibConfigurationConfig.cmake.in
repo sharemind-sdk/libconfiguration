@@ -23,6 +23,6 @@
 #   SharemindLibConfiguration_DEFINITIONS  - required compiler definitions
 
 
-SET(SharemindLibConfiguration_INCLUDE_DIRS @SHAREMIND_LIBCONFIGURATION_INSTALL_INCLUDE_DIRS@)
-SET(SharemindLibConfiguration_LIBRARIES @SHAREMIND_LIBCONFIGURATION_INSTALL_LINK_LIBRARIES@)
-SET(SharemindLibConfiguration_DEFINITIONS @SHAREMIND_LIBCONFIGURATION_INSTALL_DEFINITIONS@)
+SET(SharemindLibConfiguration_INCLUDE_DIRS @SharemindLibConfiguration_INSTALL_INCLUDE_DIRS@)
+SET(SharemindLibConfiguration_LIBRARIES @SharemindLibConfiguration_INSTALL_LINK_LIBRARIES@)
+SET(SharemindLibConfiguration_DEFINITIONS @SharemindLibConfiguration_INSTALL_DEFINITIONS@)

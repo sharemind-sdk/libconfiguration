@@ -17,162 +17,115 @@
 # For further information, please contact us at sharemind@cyber.ee.
 #
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-PROJECT(SharemindLibConfiguration CXX)
-
-SET(CPACK_PACKAGE_VERSION_MAJOR "0")
-SET(CPACK_PACKAGE_VERSION_MINOR "1")
-SET(CPACK_PACKAGE_VERSION_PATCH "0")
-SET(SHAREMIND_LIBCONFIGURATION_SOVERSION
-    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
-SET(SHAREMIND_LIBCONFIGURATION_VERSION
-    "${SHAREMIND_LIBCONFIGURATION_SOVERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
+PROJECT(SharemindLibConfiguration VERSION 0.1.0 LANGUAGES CXX)
 
 INCLUDE("${CMAKE_CURRENT_SOURCE_DIR}/config.local" OPTIONAL)
 INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
-INCLUDE(CheckCXXSourceCompiles)
+
+FIND_PACKAGE(SharemindCMakeHelpers REQUIRED)
+
+SharemindSetProjectVersion()
+
 
 SET(Boost_USE_STATIC_RUNTIME OFF)
 FIND_PACKAGE(Boost COMPONENTS filesystem iostreams REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
 
-SET(SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES "")
-LIST(APPEND SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES
+
+# Headers:
+FILE(GLOB_RECURSE SharemindLibConfiguration_HEADERS
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
+INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
+        DESTINATION "include/sharemind/libconfiguration"
+        COMPONENT "dev")
+
+
+# The library:
+SharemindNewUniqueList(SharemindLibConfiguration_LINK_LIBRARIES
     ${Boost_LIBRARIES}
     ${SharemindCxxHeaders_LIBRARIES}
 )
-LIST(REMOVE_DUPLICATES SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES)
-
-SET(SHAREMIND_LIBCONFIGURATION_EXTERNAL_INCLUDE_DIRS "")
-LIST(APPEND SHAREMIND_LIBCONFIGURATION_EXTERNAL_INCLUDE_DIRS
+SharemindNewUniqueList(SharemindLibConfiguration_INCLUDE_DIRS
     ${Boost_INCLUDE_DIRS}
     ${SharemindCxxHeaders_INCLUDE_DIRS}
 )
-LIST(REMOVE_DUPLICATES SHAREMIND_LIBCONFIGURATION_EXTERNAL_INCLUDE_DIRS)
-
-SET(SHAREMIND_LIBCONFIGURATION_EXTERNAL_DEFINITIONS "")
-LIST(APPEND SHAREMIND_LIBCONFIGURATION_EXTERNAL_DEFINITIONS
+SharemindNewUniqueList(SharemindLibConfiguration_DEFINITIONS
     ${SharemindCxxHeaders_DEFINITIONS}
 )
-LIST(REMOVE_DUPLICATES SHAREMIND_LIBCONFIGURATION_EXTERNAL_DEFINITIONS)
-
-
-SET(SHAREMIND_LIBCONFIGURATION_INSTALL_LINK_LIBRARIES
-    ${SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES}
-    "-L${CMAKE_INSTALL_PREFIX}/lib" "-lsharemind_configuration")
-SET(SHAREMIND_LIBCONFIGURATION_INSTALL_INCLUDE_DIRS
-    "${CMAKE_INSTALL_PREFIX}/include"
-    ${SHAREMIND_LIBCONFIGURATION_EXTERNAL_INCLUDE_DIRS})
-SET(SHAREMIND_LIBCONFIGURATION_INSTALL_DEFINITIONS
-    ${SHAREMIND_LIBCONFIGURATION_EXTERNAL_DEFINITIONS})
-LIST(REMOVE_DUPLICATES SHAREMIND_LIBCONFIGURATION_INSTALL_INCLUDE_DIRS)
-
-INCLUDE_DIRECTORIES(${SHAREMIND_LIBCONFIGURATION_EXTERNAL_INCLUDE_DIRS})
-ADD_DEFINITIONS(${SHAREMIND_LIBCONFIGURATION_EXTERNAL_DEFINITIONS})
-ADD_COMPILE_OPTIONS(
-  "-std=c++11" "-Wall" "-Wextra" "-O2" "-fPIC"
-  "$<$<NOT:$<STREQUAL:$<CONFIGURATION>,Release>>:-ggdb>"
-  "$<$<NOT:$<STREQUAL:$<CONFIGURATION>,Release>>:-fno-omit-frame-pointer>"
-  "$<$<STREQUAL:$<CONFIGURATION>,Release>:-DNDEBUG>"
-  "$<$<STREQUAL:$<CONFIGURATION>,Release>:-fomit-frame-pointer>"
+SharemindSetCxx11CompileOptions()
+FILE(GLOB_RECURSE SharemindLibConfiguration_SOURCES
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+SharemindAddSharedLibrary("libconfiguration"
+    OUTPUT_NAME "sharemind_configuration"
+    SOURCES
+        ${SharemindLibConfiguration_SOURCES}
+        ${SharemindLibConfiguration_HEADERS}
+    INCLUDE_DIRECTORIES
+        ${SharemindLibConfiguration_INCLUDE_DIRS}
+    LEGACY_DEFINITIONS
+        ${SharemindLibConfiguration_DEFINITIONS}
+    LINK_LIBRARIES
+        ${SharemindLibConfiguration_LINK_LIBRARIES}
 )
 
-INCLUDE(CheckCXXCompilerFlag)
-FUNCTION(CHECK_ADD_COMPILER_FLAG flag)
-    STRING(SUBSTRING "${flag}" 1 -1 FlagName)
-    STRING(REPLACE "+" "--plus--" TestName "${FlagName}")
-    CHECK_CXX_COMPILER_FLAG("${flag}" "${TestName}")
-    IF(${TestName})
-        ADD_COMPILE_OPTIONS("${flag}")
-    ENDIF()
-ENDFUNCTION()
-CHECK_ADD_COMPILER_FLAG("-Wzero-as-null-pointer-constant")
-CHECK_ADD_COMPILER_FLAG("-Wsuggest-override")
-CHECK_ADD_COMPILER_FLAG("-Wno-noexcept-type")
-CHECK_ADD_COMPILER_FLAG("-Weverything")
-CHECK_ADD_COMPILER_FLAG("-Wlogical-op")
-CHECK_ADD_COMPILER_FLAG("-Wno-c++98-compat")
-CHECK_ADD_COMPILER_FLAG("-Wno-c++98-compat-pedantic")
-CHECK_ADD_COMPILER_FLAG("-Wno-float-equal")
-CHECK_ADD_COMPILER_FLAG("-Wno-covered-switch-default")
-CHECK_ADD_COMPILER_FLAG("-Wno-packed")
-CHECK_ADD_COMPILER_FLAG("-Wno-padded")
-CHECK_ADD_COMPILER_FLAG("-Wno-weak-vtables")
 
-FILE(GLOB_RECURSE SHAREMIND_LIBCONFIGURATION_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-FILE(GLOB_RECURSE SHAREMIND_LIBCONFIGURATION_HEADERS
-     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
-ADD_LIBRARY("libconfiguration" SHARED
-    ${SHAREMIND_LIBCONFIGURATION_SOURCES}
-    ${SHAREMIND_LIBCONFIGURATION_HEADERS})
-SET_TARGET_PROPERTIES("libconfiguration" PROPERTIES
-                      OUTPUT_NAME "sharemind_configuration"
-                      VERSION "${SHAREMIND_LIBCONFIGURATION_VERSION}"
-                      SOVERSION "${SHAREMIND_LIBCONFIGURATION_SOVERSION}")
-TARGET_LINK_LIBRARIES("libconfiguration"
-                      ${SHAREMIND_LIBCONFIGURATION_EXTERNAL_LINK_LIBRARIES})
-INSTALL(TARGETS "libconfiguration" LIBRARY DESTINATION "lib" COMPONENT lib)
+# Install CMake files:
+SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_LINK_LIBRARIES
+    ${SharemindLibConfiguration_LINK_LIBRARIES}
+    "-L${CMAKE_INSTALL_PREFIX}/lib" "-lsharemind_configuration"
+)
+SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_INCLUDE_DIRS
+    "${CMAKE_INSTALL_PREFIX}/include"
+    ${SharemindLibConfiguration_INCLUDE_DIRS}
+)
+SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_DEFINITIONS
+    ${SharemindLibConfiguration_DEFINITIONS}
+)
+SharemindUseCMakeFindFiles()
 
-INSTALL(FILES ${SHAREMIND_LIBCONFIGURATION_HEADERS}
-        DESTINATION "include/sharemind/libconfiguration"
-        COMPONENT dev)
-
-FILE(GLOB_RECURSE SHAREMIND_LIBCONFIGURATION_INFILES
-     "${CMAKE_CURRENT_SOURCE_DIR}/*.in")
-ADD_CUSTOM_TARGET("include_SHAREMIND_LIBCONFIGURATION_INFILES_in_IDE"
-                  SOURCES ${SHAREMIND_LIBCONFIGURATION_INFILES})
 
 # Tests:
-ENABLE_TESTING()
-ADD_CUSTOM_TARGET(check COMMAND "${CMAKE_CTEST_COMMAND}")
-FILE(GLOB_RECURSE SHAREMIND_LIBCONFIGURATION_TESTS
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp")
-ADD_CUSTOM_TARGET("include_SHAREMIND_LIBCONFIGURATION_TESTS_in_IDE"
-    SOURCES ${SHAREMIND_LIBCONFIGURATION_TESTS})
-FOREACH(test IN LISTS SHAREMIND_LIBCONFIGURATION_TESTS)
-    GET_FILENAME_COMPONENT(testName "${test}" NAME_WE)
-    ADD_EXECUTABLE("testImpl_${testName}" EXCLUDE_FROM_ALL "${test}")
-    TARGET_LINK_LIBRARIES("testImpl_${testName}" libconfiguration)
-    ADD_DEPENDENCIES(check "testImpl_${testName}")
-    ADD_TEST(NAME "test_${testName}" COMMAND "testImpl_${testName}")
-ENDFOREACH()
-
-CONFIGURE_FILE(
-  "${CMAKE_CURRENT_SOURCE_DIR}/SharemindLibConfigurationConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfig.cmake"
-  @ONLY)
-INSTALL(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfig.cmake"
-  DESTINATION "lib/SharemindLibConfiguration"
-  COMPONENT dev)
-CONFIGURE_FILE(
-  "${CMAKE_CURRENT_SOURCE_DIR}/SharemindLibConfigurationConfigVersion.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfigVersion.cmake"
-  @ONLY)
-INSTALL(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/SharemindLibConfigurationConfigVersion.cmake"
-  DESTINATION "lib/SharemindLibConfiguration"
-  COMPONENT dev)
+SharemindAddSimpleTests("${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp"
+    INCLUDE_DIRECTORIES
+        ${SharemindLibConfiguration_INCLUDE_DIRS}
+    LEGACY_DEFINITIONS
+        ${SharemindLibConfiguration_DEFINITIONS}
+    LINK_LIBRARIES
+        ${SharemindLibConfiguration_LINK_LIBRARIES}
+        "libconfiguration"
+)
 
 
 # Packaging:
-SET(CPACK_PACKAGE_VENDOR "Cybernetica AS")
-SET(CPACK_PACKAGE_CONTACT "Sharemind packaging <sharemind-packaging@cyber.ee>")
-SET(CPACK_GENERATOR "DEB")
-SET(CPACK_DEBIAN_PACKAGE_NAME "libsharemind-configuration")
-SET(CPACK_DEBIAN_PACKAGE_RELEASE "cyber1")
-SET(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
-SET(CPACK_DEB_COMPONENT_INSTALL "ON")
-SET(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
-
-SET(CPACK_DEBIAN_LIB_PACKAGE_NAME "libsharemind-configuration")
-SET(CPACK_COMPONENT_DEV_DESCRIPTION "Sharemind configuration library development headers")
-SET(CPACK_COMPONENT_LIB_DESCRIPTION "Sharemind configuration library")
-SET(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS
-    "libsharemind-configuration (= ${SHAREMIND_LIBCONFIGURATION_VERSION}), libsharemind-cxxheaders-dev (>= 0.1.0), libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libc6-dev (>= 2.19), libstdc++-dev")
-SET(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS
-    "libboost-filesystem-dev (>= 1.50), libboost-iostreams-dev (>= 1.50), libstdc++6 (>= 4.8.0), libc6 (>= 2.19)")
-SET(CPACK_DEBIAN_DEV_PACKAGE_SECTION "libdevel")
-SET(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
-INCLUDE(CPack)
+SharemindSetupPackaging()
+SharemindAddComponentPackage("lib"
+    NAME "libsharemind-configuration"
+    DESCRIPTION "Sharemind configuration library"
+    DEB_SECTION "libs"
+    DEB_DEPENDS
+        "libboost-filesystem-dev (>= 1.50)"
+        "libboost-iostreams-dev (>= 1.50)"
+        "libstdc++6 (>= 4.8.0)"
+        "libc6 (>= 2.19)"
+)
+SharemindAddComponentPackage("dev"
+    NAME "libsharemind-configuration-dev"
+    DESCRIPTION "Sharemind configuration library development headers"
+    DEB_SECTION "libdevel"
+    DEB_DEPENDS
+        "libsharemind-configuration (= ${SharemindLibConfiguration_VERSION})"
+        "libsharemind-cxxheaders-dev (>= 0.1.0)"
+        "libboost-filesystem-dev (>= 1.50)"
+        "libboost-iostreams-dev (>= 1.50)"
+        "libc6-dev (>= 2.19)"
+        "libstdc++-dev"
+)
+SharemindAddComponentPackage("debug"
+    NAME "libsharemind-configuration-dbg"
+    DESCRIPTION "Sharemind configuration library debug symbols"
+    DEB_SECTION "debug"
+    DEB_DEPENDS
+        "libsharemind-configuration (= ${SharemindLibConfiguration_VERSION})"
+)
+SharemindPackagingFinalize()
