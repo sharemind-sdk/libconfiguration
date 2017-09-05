@@ -71,18 +71,17 @@ SharemindAddSharedLibrary("libconfiguration"
 
 
 # Install CMake files:
-SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_LINK_LIBRARIES
-    ${SharemindLibConfiguration_LINK_LIBRARIES}
-    "-L${CMAKE_INSTALL_PREFIX}/lib" "-lsharemind_configuration"
+SharemindCreateCMakeFindFiles(
+    INCLUDE_DIRS
+        "${CMAKE_INSTALL_PREFIX}/include"
+        ${SharemindLibConfiguration_INCLUDE_DIRS}
+    DEFINITIONS
+        ${SharemindLibConfiguration_DEFINITIONS}
+    LIBRARIES
+        ${SharemindLibConfiguration_LINK_LIBRARIES}
+        "-L${CMAKE_INSTALL_PREFIX}/lib"
+        "-lsharemind_configuration"
 )
-SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_INCLUDE_DIRS
-    "${CMAKE_INSTALL_PREFIX}/include"
-    ${SharemindLibConfiguration_INCLUDE_DIRS}
-)
-SharemindNewUniqueList(SharemindLibConfiguration_INSTALL_DEFINITIONS
-    ${SharemindLibConfiguration_DEFINITIONS}
-)
-SharemindUseCMakeFindFiles()
 
 
 # Tests:
