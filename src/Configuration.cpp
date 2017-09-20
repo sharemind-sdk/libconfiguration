@@ -57,7 +57,10 @@ public: /* Methods: */
                             return r;
                         throw std::system_error(errno, std::system_category());
                     }()),
-                [](int const * const fdPtr) noexcept { ::close(*fdPtr); }))
+                [](int const * const fdPtr) noexcept {
+                    ::close(*fdPtr);
+                    delete fdPtr;
+                }))
     {}
 
     std::streamsize read(char * const buffer, std::streamsize const bufferSize)
