@@ -135,11 +135,12 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         PosixFileInputSource inFile(path);
         boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
         boost::property_tree::read_ini(inStream, ptree);
-        interpolation->addVariable(
-                "CurrentFileDirectory",
-                boost::filesystem::canonical(
-                    boost::filesystem::path(
-                            path)).parent_path().string());
+        if (interpolation)
+            interpolation->addVariable(
+                    "CurrentFileDirectory",
+                    boost::filesystem::canonical(
+                        boost::filesystem::path(
+                                path)).parent_path().string());
         filename = path;
     }
 
@@ -374,12 +375,19 @@ Configuration::Iterator Configuration::end() noexcept
 void Configuration::erase(std::string const & key) noexcept
 { m_ptree->erase(key); }
 
-std::string Configuration::interpolate(std::string const & value) const
-{ return m_inner->interpolation->interpolate(value); }
+std::string Configuration::interpolate(std::string const & value) const {
+    return m_inner->interpolation
+           ? m_inner->interpolation->interpolate(value)
+           : value;
+}
 
 std::string Configuration::interpolate(std::string const & value,
                                        ::tm const & theTime) const
-{ return m_inner->interpolation->interpolate(value, theTime); }
+{
+    return m_inner->interpolation
+           ? m_inner->interpolation->interpolate(value, theTime)
+           : value;
+}
 
 std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
         std::string const & configName)
