@@ -207,6 +207,24 @@ Configuration Configuration::IteratorTransformer::operator()(
     }
 }
 
+Configuration const Configuration::IteratorTransformer::operator()(
+        boost::property_tree::ptree::value_type const & value) const
+{
+    if (m_path) {
+        assert(!m_path->empty());
+        return Configuration(std::make_shared<std::string>(
+                                 (*m_path) + '.' + value.first),
+                             m_inner,
+                             const_cast<boost::property_tree::ptree &>(
+                                 value.second));
+    } else {
+        return Configuration(std::make_shared<std::string>(value.first),
+                             m_inner,
+                             const_cast<boost::property_tree::ptree &>(
+                                 value.second));
+    }
+}
+
 Configuration::Interpolation::Interpolation()
     : m_time(Configuration::getLocalTimeTm())
 {}
@@ -348,6 +366,16 @@ Configuration::interpolation() const noexcept
 void Configuration::setInterpolation(std::shared_ptr<Interpolation> i) noexcept
 { m_inner->interpolation = std::move(i); }
 
+void Configuration::loadInterpolationOverridesFromSection(
+        std::string const & sectionName)
+{
+    if (!m_inner->interpolation)
+        m_inner->interpolation = std::make_shared<Interpolation>();
+    if (auto const section = m_inner->ptree.get_child_optional(sectionName))
+        for (auto const & vp : *section)
+            m_inner->interpolation->addVariable(vp.first, vp.second.data());
+}
+
 std::string const & Configuration::filename() const noexcept
 { return m_inner->filename; }
 
@@ -369,8 +397,20 @@ std::string const & Configuration::path() const noexcept {
 Configuration::Iterator Configuration::begin() noexcept
 { return Iterator(m_inner->ptree.begin(), *this); }
 
+Configuration::ConstIterator Configuration::begin() const noexcept
+{ return ConstIterator(m_inner->ptree.begin(), *this); }
+
+Configuration::ConstIterator Configuration::cbegin() const noexcept
+{ return ConstIterator(m_inner->ptree.begin(), *this); }
+
 Configuration::Iterator Configuration::end() noexcept
 { return Iterator(m_inner->ptree.end(), *this); }
+
+Configuration::ConstIterator Configuration::end() const noexcept
+{ return ConstIterator(m_inner->ptree.end(), *this); }
+
+Configuration::ConstIterator Configuration::cend() const noexcept
+{ return ConstIterator(m_inner->ptree.end(), *this); }
 
 void Configuration::erase(std::string const & key) noexcept
 { m_ptree->erase(key); }

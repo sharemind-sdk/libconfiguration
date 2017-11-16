@@ -56,6 +56,9 @@ private: /* Types: */
         Configuration operator()(
                 boost::property_tree::ptree::value_type & value) const;
 
+        Configuration const operator()(
+                boost::property_tree::ptree::value_type const & value) const;
+
     private: /* Fields: */
 
         std::shared_ptr<std::string const> const m_path;
@@ -149,6 +152,11 @@ public: /* Types: */
                 IteratorTransformer,
                 boost::property_tree::ptree::iterator>;
 
+    using ConstIterator =
+            boost::transform_iterator<
+                IteratorTransformer,
+                boost::property_tree::ptree::const_iterator>;
+
     class Interpolation {
 
     public: /* Methods: */
@@ -193,6 +201,9 @@ public: /* Methods: */
     std::shared_ptr<Interpolation> const & interpolation() const noexcept;
     void setInterpolation(std::shared_ptr<Interpolation> i) noexcept;
 
+    void loadInterpolationOverridesFromSection(
+            std::string const & sectionName = "Interpolations");
+
     std::string const & filename() const noexcept;
 
     std::string key() const;
@@ -200,8 +211,12 @@ public: /* Methods: */
     std::string const & path() const noexcept;
 
     Iterator begin() noexcept;
+    ConstIterator begin() const noexcept;
+    ConstIterator cbegin() const noexcept;
 
     Iterator end() noexcept;
+    ConstIterator end() const noexcept;
+    ConstIterator cend() const noexcept;
 
     template <typename T>
     T value() const { return parseValue<T>(*m_ptree, path()); }
