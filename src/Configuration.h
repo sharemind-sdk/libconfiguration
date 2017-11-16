@@ -69,6 +69,8 @@ private: /* Types: */
 
 public: /* Types: */
 
+    using SizeType = boost::property_tree::ptree::size_type;
+
     SHAREMIND_DEFINE_EXCEPTION(sharemind::Exception, Exception);
     SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
             Exception,
@@ -209,6 +211,9 @@ public: /* Methods: */
     std::string key() const;
 
     std::string const & path() const noexcept;
+
+    bool empty() const noexcept { return m_ptree->empty(); }
+    SizeType size() const noexcept { return m_ptree->size(); }
 
     Iterator begin() noexcept;
     ConstIterator begin() const noexcept;
