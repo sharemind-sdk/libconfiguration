@@ -119,13 +119,13 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         throw NoValidConfigurationFileFound();
     }
 
-    Inner(std::string const & filename,
+    Inner(std::string const & filename_,
           std::shared_ptr<Interpolation> interpolation_)
         : interpolation(std::move(interpolation_))
     {
-        FailedToOpenAndParseConfigurationException exception(filename);
+        FailedToOpenAndParseConfigurationException exception(filename_);
         try {
-            initFromPath(filename);
+            initFromPath(filename_);
         } catch (...) {
             std::throw_with_nested(std::move(exception));
         }
