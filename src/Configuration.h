@@ -106,48 +106,18 @@ public: /* Types: */
             InterpolationException,
             StrftimeException,
             "strftime() failed!");
-
-    class FailedToOpenAndParseConfigurationException: public Exception {
-
-    public: /* Methods: */
-
-        FailedToOpenAndParseConfigurationException(std::string const & path);
-
-        char const * what() const noexcept override;
-
-    private: /* Fields: */
-
-        std::shared_ptr<std::string> m_message;
-
-    };
-
-    class ValueNotFoundException: public Exception {
-
-    public: /* Methods: */
-
-        ValueNotFoundException(std::string const & path);
-
-        char const * what() const noexcept override;
-
-    private: /* Fields: */
-
-        std::shared_ptr<std::string> m_message;
-
-    };
-
-    class FailedToParseValueException: public Exception {
-
-    public: /* Methods: */
-
-        FailedToParseValueException(std::string const & path);
-
-        char const * what() const noexcept override;
-
-    private: /* Fields: */
-
-        std::shared_ptr<std::string> m_message;
-
-    };
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            Exception,
+            FailedToOpenAndParseConfigurationException,
+            "Failed to load or parse a valid configuration!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            Exception,
+            PathNotFoundException,
+            "Path not found in configuration!");
+    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            Exception,
+            FailedToParseValueException,
+            "Failed to parse value in configuration");
 
     using Iterator =
             boost::transform_iterator<
@@ -224,21 +194,19 @@ public: /* Methods: */
     ConstIterator cend() const noexcept;
 
     template <typename T>
-    T value() const { return parseValue<T>(*m_ptree, path()); }
+    T value() const { return parseValue<T>(*m_ptree); }
 
     template <typename T>
     T get(std::string const & path) const {
-        auto const fullPath(composePath(path));
         decltype(std::addressof(m_ptree->get_child(path))) child;
         {
-            ValueNotFoundException notFoundException(fullPath);
             try {
                 child = std::addressof(m_ptree->get_child(path));
             } catch (...) {
-                std::throw_with_nested(std::move(notFoundException));
+                std::throw_with_nested(PathNotFoundException());
             }
         }
-        return parseValue<T>(*child, fullPath);
+        return parseValue<T>(*child);
     }
 
     template <typename T, typename Default>
@@ -281,7 +249,7 @@ public: /* Methods: */
         } catch (...) {
             return T(std::forward<Args>(defaultValueArgs)...);
         }
-        return parseValue<T>(*child, composePath(path));
+        return parseValue<T>(*child);
     }
 
     void erase(std::string const & key) noexcept;
@@ -310,17 +278,14 @@ private: /* Methods: */
     std::string getStringValue(std::string const &, std::string && v) const;
 
     template <typename T>
-    T parseValue(boost::property_tree::ptree const & ptree,
-                 std::string const & fullPath) const
-    {
-        FailedToParseValueException parseException(fullPath);
+    T parseValue(boost::property_tree::ptree const & ptree) const {
         try {
             if (auto const optionalValue =
                         Translator<T>().get_value(interpolate(ptree.data())))
                 return *optionalValue;
-            throw std::move(parseException);
+            throw FailedToParseValueException();
         } catch (...) {
-            std::throw_with_nested(std::move(parseException));
+            std::throw_with_nested(FailedToParseValueException());
         }
     }
 private: /* Fields: */

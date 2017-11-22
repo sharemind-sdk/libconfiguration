@@ -100,7 +100,6 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         : interpolation(std::move(interpolation_))
     {
         for (auto const & path : tryPaths) {
-            FailedToOpenAndParseConfigurationException exception(path);
             try {
                 initFromPath(path);
                 return;
@@ -111,9 +110,11 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
                        https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60555 : */
                     && ((e.code().category() != std::system_category())
                         || (e.code().value() != ENOENT)))
-                    std::throw_with_nested(std::move(exception));
+                    std::throw_with_nested(
+                                FailedToOpenAndParseConfigurationException());
             } catch (...) {
-                std::throw_with_nested(std::move(exception));
+                std::throw_with_nested(
+                            FailedToOpenAndParseConfigurationException());
             }
         }
         throw NoValidConfigurationFileFound();
@@ -123,11 +124,11 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
           std::shared_ptr<Interpolation> interpolation_)
         : interpolation(std::move(interpolation_))
     {
-        FailedToOpenAndParseConfigurationException exception(filename_);
         try {
             initFromPath(filename_);
         } catch (...) {
-            std::throw_with_nested(std::move(exception));
+            std::throw_with_nested(
+                        FailedToOpenAndParseConfigurationException());
         }
     }
 
@@ -151,39 +152,6 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     std::string filename;
 
 };
-
-Configuration::FailedToOpenAndParseConfigurationException
-    ::FailedToOpenAndParseConfigurationException(
-        std::string const & path)
-    : m_message(
-        std::make_shared<std::string>(
-              "Failed to load or parse valid configuration format from file \""
-              + path + "\"!"))
-{}
-
-char const * Configuration::FailedToOpenAndParseConfigurationException::what()
-        const noexcept
-{ return m_message->c_str(); }
-
-Configuration::ValueNotFoundException::ValueNotFoundException(
-        std::string const & path)
-    : m_message(
-        std::make_shared<std::string>(
-                "Value \"" + path + "\" not found in configuration!"))
-{}
-
-char const * Configuration::ValueNotFoundException::what() const noexcept
-{ return m_message->c_str(); }
-
-Configuration::FailedToParseValueException::FailedToParseValueException(
-        std::string const & path)
-    : m_message(
-        std::make_shared<std::string>(
-                "Failed to parse value for \"" + path + "\"!"))
-{}
-
-char const * Configuration::FailedToParseValueException::what() const noexcept
-{ return m_message->c_str(); }
 
 Configuration::IteratorTransformer::IteratorTransformer(
         Configuration const & parent)
@@ -449,13 +417,6 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
     return theTimeTm;
 }
 
-std::string Configuration::composePath(std::string const & path) const {
-    if (!m_path)
-        return path;
-    assert(!m_path->empty());
-    return (*m_path) + '.' + path;
-}
-
 #define GET(name,R,D,...) \
     R Configuration::name(std::string const & path, D v) const { \
         decltype(std::addressof(m_ptree->get_child(path))) child; \
@@ -464,7 +425,7 @@ std::string Configuration::composePath(std::string const & path) const {
         } catch (...) { \
             return __VA_ARGS__; \
         } \
-        return parseValue<R>(*child, composePath(path)); \
+        return parseValue<R>(*child); \
     }
 
 GET(getSizeValue, std::size_t, std::size_t, v)
