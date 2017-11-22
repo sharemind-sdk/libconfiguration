@@ -33,6 +33,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_map>
+#include "Path.h"
 
 
 namespace sharemind {
@@ -61,7 +62,7 @@ private: /* Types: */
 
     private: /* Fields: */
 
-        std::shared_ptr<std::string const> const m_path;
+        std::shared_ptr<Path const> const m_path;
         std::shared_ptr<Inner> const m_inner;
 
     };
@@ -178,9 +179,9 @@ public: /* Methods: */
 
     std::string const & filename() const noexcept;
 
-    std::string key() const;
+    std::string const & key() const noexcept;
 
-    std::string const & path() const noexcept;
+    Path const & path() const noexcept;
 
     bool empty() const noexcept { return m_ptree->empty(); }
     SizeType size() const noexcept { return m_ptree->size(); }
@@ -197,23 +198,13 @@ public: /* Methods: */
     T value() const { return parseValue<T>(*m_ptree); }
 
     template <typename T>
-    T get(std::string const & path) const {
-        decltype(std::addressof(m_ptree->get_child(path))) child;
-        {
-            try {
-                child = std::addressof(m_ptree->get_child(path));
-            } catch (...) {
-                std::throw_with_nested(PathNotFoundException());
-            }
-        }
-        return parseValue<T>(*child);
-    }
+    T get(Path const & path_) const { return parseValue<T>(findChild(path_)); }
 
     template <typename T, typename Default>
     typename std::enable_if<std::is_same<typename std::remove_cv<T>::type,
                                          std::size_t>::value,
                             T>::type
-    get(std::string const & path, Default && defaultValue) const
+    get(Path const & path, Default && defaultValue) const
     { return getSizeValue(path, std::forward<Default>(defaultValue)); }
 
     template <typename T, typename ... Args>
@@ -226,7 +217,7 @@ public: /* Methods: */
                         char *,
                         std::string>::value),
             T>::type
-    get(std::string const & path, Args && ... defaultValueArgs) const
+    get(Path const & path, Args && ... defaultValueArgs) const
     { return getStringValue(path, std::forward<Args>(defaultValueArgs)...); }
 
     template <typename T, typename ... Args>
@@ -242,17 +233,17 @@ public: /* Methods: */
                          char *,
                          std::string>::value)),
             T>::type
-    get(std::string const & path, Args && ... defaultValueArgs) const {
-        decltype(std::addressof(m_ptree->get_child(path))) child;
+    get(Path const & path_, Args && ... defaultValueArgs) const {
+        boost::property_tree::ptree const * child = m_ptree;
         try {
-            child = std::addressof(m_ptree->get_child(path));
+            child = &findChild(path_);
         } catch (...) {
             return T(std::forward<Args>(defaultValueArgs)...);
         }
         return parseValue<T>(*child);
     }
 
-    void erase(std::string const & key) noexcept;
+    void erase(Path const & path) noexcept;
 
     std::string interpolate(std::string const & value) const;
     std::string interpolate(std::string const & value,
@@ -266,16 +257,16 @@ public: /* Methods: */
 
 private: /* Methods: */
 
-    Configuration(std::shared_ptr<std::string const> path,
+    Configuration(std::shared_ptr<Path const> path,
                   std::shared_ptr<Inner> inner,
                   boost::property_tree::ptree & ptree) noexcept;
 
-    std::string composePath(std::string const & path) const;
+    std::size_t getSizeValue(Path const &, std::size_t) const;
+    std::string getStringValue(Path const &, char const *) const;
+    std::string getStringValue(Path const &, std::string const &) const;
+    std::string getStringValue(Path const &, std::string && v) const;
 
-    std::size_t getSizeValue(std::string const &, std::size_t) const;
-    std::string getStringValue(std::string const &, char const *) const;
-    std::string getStringValue(std::string const &, std::string const &) const;
-    std::string getStringValue(std::string const &, std::string && v) const;
+    boost::property_tree::ptree const & findChild(Path const & path_) const;
 
     template <typename T>
     T parseValue(boost::property_tree::ptree const & ptree) const {
@@ -290,7 +281,7 @@ private: /* Methods: */
     }
 private: /* Fields: */
 
-    std::shared_ptr<std::string const> m_path;
+    std::shared_ptr<Path const> m_path;
     std::shared_ptr<Inner> m_inner;
     boost::property_tree::ptree * m_ptree;
 
@@ -300,16 +291,14 @@ extern template std::string Configuration::value<std::string>() const;
 extern template std::size_t Configuration::value<std::size_t>() const;
 
 extern template std::string Configuration::get<std::string>(
-        std::string const &) const;
+        Path const &) const;
 extern template std::size_t Configuration::get<std::size_t>(
-        std::string const &) const;
+        Path const &) const;
 
 extern template std::string Configuration::parseValue<std::string>(
-        boost::property_tree::ptree const &,
-        std::string const &) const;
+        boost::property_tree::ptree const &) const;
 extern template std::size_t Configuration::parseValue<std::size_t>(
-        boost::property_tree::ptree const &,
-        std::string const &) const;
+        boost::property_tree::ptree const &) const;
 
 } /* namespace sharemind { */
 

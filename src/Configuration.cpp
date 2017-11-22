@@ -25,6 +25,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <cassert>
 #include <fcntl.h>
+#include <new>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
@@ -164,12 +165,11 @@ Configuration Configuration::IteratorTransformer::operator()(
 {
     if (m_path) {
         assert(!m_path->empty());
-        return Configuration(std::make_shared<std::string>(
-                                 (*m_path) + '.' + value.first),
+        return Configuration(std::make_shared<Path>((*m_path) + value.first),
                              m_inner,
                              value.second);
     } else {
-        return Configuration(std::make_shared<std::string>(value.first),
+        return Configuration(std::make_shared<Path>(value.first),
                              m_inner,
                              value.second);
     }
@@ -180,13 +180,12 @@ Configuration const Configuration::IteratorTransformer::operator()(
 {
     if (m_path) {
         assert(!m_path->empty());
-        return Configuration(std::make_shared<std::string>(
-                                 (*m_path) + '.' + value.first),
+        return Configuration(std::make_shared<Path>((*m_path) + value.first),
                              m_inner,
                              const_cast<boost::property_tree::ptree &>(
                                  value.second));
     } else {
-        return Configuration(std::make_shared<std::string>(value.first),
+        return Configuration(std::make_shared<Path>(value.first),
                              m_inner,
                              const_cast<boost::property_tree::ptree &>(
                                  value.second));
@@ -316,7 +315,7 @@ Configuration::Configuration(std::vector<std::string> const & tryPaths,
     , m_ptree(&m_inner->ptree)
 {}
 
-Configuration::Configuration(std::shared_ptr<std::string const> path,
+Configuration::Configuration(std::shared_ptr<Path const> path,
                              std::shared_ptr<Inner> inner,
                              boost::property_tree::ptree & ptree)
         noexcept
@@ -347,18 +346,15 @@ void Configuration::loadInterpolationOverridesFromSection(
 std::string const & Configuration::filename() const noexcept
 { return m_inner->filename; }
 
-std::string Configuration::key() const {
-    if (!m_path)
-        return std::string();
-    assert(!m_path->empty());
-    auto const i(m_path->find_last_of('.'));
-    if (i == std::string::npos)
-        return *m_path;
-    return m_path->substr(i + 1);
+std::string const & Configuration::key() const noexcept {
+    static std::string const emptyKey;
+    if (!m_path || m_path->empty())
+        return emptyKey;
+    return m_path->components().back();
 }
 
-std::string const & Configuration::path() const noexcept {
-    static std::string const emptyPath;
+Path const & Configuration::path() const noexcept {
+    static Path const emptyPath;
     return m_path ? *m_path : emptyPath;
 }
 
@@ -380,8 +376,23 @@ Configuration::ConstIterator Configuration::end() const noexcept
 Configuration::ConstIterator Configuration::cend() const noexcept
 { return ConstIterator(m_ptree->end(), *this); }
 
-void Configuration::erase(std::string const & key) noexcept
-{ m_ptree->erase(key); }
+void Configuration::erase(Path const & path) noexcept {
+    auto const end(std::end(path.components()));
+    auto it(std::begin(path.components()));
+
+    try {
+        auto child(m_ptree);
+        for (;;) {
+            auto nextIt(std::next(it));
+            if (nextIt == end)
+                break;
+            child = std::addressof(child->get_child(*it));
+        }
+        child->erase(*it);
+    } catch (...) {
+        std::throw_with_nested(PathNotFoundException());
+    }
+}
 
 std::string Configuration::interpolate(std::string const & value) const {
     return m_inner->interpolation
@@ -418,10 +429,10 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
 }
 
 #define GET(name,R,D,...) \
-    R Configuration::name(std::string const & path, D v) const { \
-        decltype(std::addressof(m_ptree->get_child(path))) child; \
+    R Configuration::name(Path const & path_, D v) const { \
+        boost::property_tree::ptree const * child; \
         try { \
-            child = std::addressof(m_ptree->get_child(path)); \
+            child = &findChild(path_); \
         } catch (...) { \
             return __VA_ARGS__; \
         } \
@@ -433,17 +444,28 @@ GET(getStringValue, std::string, char const *, v)
 GET(getStringValue, std::string, std::string const &, v)
 GET(getStringValue, std::string, std::string &&, std::move(v))
 
+boost::property_tree::ptree const & Configuration::findChild(Path const & path_)
+        const
+{
+    auto r(m_ptree);
+    try {
+        for (auto const & component : path_.components())
+            r = std::addressof(r->get_child(component));
+    } catch (...) {
+        std::throw_with_nested(PathNotFoundException());
+    }
+    return *r;
+}
+
 template std::string Configuration::value<std::string>() const;
 template std::size_t Configuration::value<std::size_t>() const;
 
-template std::string Configuration::get<std::string>(std::string const &) const;
-template std::size_t Configuration::get<std::size_t>(std::string const &) const;
+template std::string Configuration::get<std::string>(Path const &) const;
+template std::size_t Configuration::get<std::size_t>(Path const &) const;
 
 template std::string Configuration::parseValue<std::string>(
-        boost::property_tree::ptree const &,
-        std::string const &) const;
+        boost::property_tree::ptree const &) const;
 template std::size_t Configuration::parseValue<std::size_t>(
-        boost::property_tree::ptree const &,
-        std::string const &) const;
+        boost::property_tree::ptree const &) const;
 
 } /* namespace sharemind { */
