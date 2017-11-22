@@ -395,22 +395,22 @@ std::string const & Configuration::path() const noexcept {
 }
 
 Configuration::Iterator Configuration::begin() noexcept
-{ return Iterator(m_inner->ptree.begin(), *this); }
+{ return Iterator(m_ptree->begin(), *this); }
 
 Configuration::ConstIterator Configuration::begin() const noexcept
-{ return ConstIterator(m_inner->ptree.begin(), *this); }
+{ return ConstIterator(m_ptree->begin(), *this); }
 
 Configuration::ConstIterator Configuration::cbegin() const noexcept
-{ return ConstIterator(m_inner->ptree.begin(), *this); }
+{ return ConstIterator(m_ptree->begin(), *this); }
 
 Configuration::Iterator Configuration::end() noexcept
-{ return Iterator(m_inner->ptree.end(), *this); }
+{ return Iterator(m_ptree->end(), *this); }
 
 Configuration::ConstIterator Configuration::end() const noexcept
-{ return ConstIterator(m_inner->ptree.end(), *this); }
+{ return ConstIterator(m_ptree->end(), *this); }
 
 Configuration::ConstIterator Configuration::cend() const noexcept
-{ return ConstIterator(m_inner->ptree.end(), *this); }
+{ return ConstIterator(m_ptree->end(), *this); }
 
 void Configuration::erase(std::string const & key) noexcept
 { m_ptree->erase(key); }
