@@ -57,33 +57,57 @@ public: /* Methods: */
 
     std::string toString(char const separator = '.') const;
 
-    Path & operator<<(std::string);
-
-    template <typename T>
-    auto operator<<(T && v)
-            -> typename std::enable_if<
-                    !std::is_convertible<T &&, std::string>::value,
-                    Path &
-               >::type
-    {
-        std::ostringstream oss;
-        oss << std::forward<T>(v);
-        m_components.emplace_back(oss.str());
-        return *this;
-    }
-
 private: /* Fields: */
 
     Components m_components;
 
 }; /* class Path */
 
+std::ostream & operator<<(std::ostream & os, Path const & path);
+
+Path & operator<<(Path &, std::string);
+Path & operator<<(Path &, Path const &);
+
+template <typename T>
+auto operator<<(Path & path, T && v)
+        -> typename std::enable_if<
+                !std::is_convertible<T &&, std::string>::value
+                && !std::is_convertible<T &&, Path>::value,
+                Path &
+           >::type
+{
+    std::ostringstream oss;
+    oss << std::forward<T>(v);
+    return path << oss.str();
+}
+
+Path & operator+=(Path &, std::string);
+Path & operator+=(Path &, Path const &);
+
+template <typename T>
+auto operator+=(Path & path, T && v)
+        -> typename std::enable_if<
+                !std::is_convertible<T &&, std::string>::value
+                && !std::is_convertible<T &&, Path>::value,
+                Path &
+           >::type
+{ return path << std::forward<T>(v); }
+
+Path operator+(Path, std::string);
+Path operator+(Path, Path);
+
+template <typename T>
+auto operator+(Path path, T && v)
+        -> typename std::enable_if<
+                !std::is_convertible<T &&, std::string>::value
+                && !std::is_convertible<T &&, Path>::value,
+                Path
+           >::type
+{
+    path << std::forward<T>(v);
+    return path;
+}
+
 } /* namespace sharemind { */
-
-
-sharemind::Path operator+(sharemind::Path, std::string);
-sharemind::Path operator+(sharemind::Path, sharemind::Path);
-
-std::ostream & operator<<(std::ostream & os, sharemind::Path const & path);
 
 #endif /* SHAREMIND_LIBCONFIGURATION_PATH_H */

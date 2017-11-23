@@ -97,24 +97,35 @@ std::string Path::toString(char const separator) const {
     return r;
 }
 
-Path & Path::operator<<(std::string str) {
-    m_components.emplace_back(std::move(str));
-    return *this;
-}
+std::ostream & operator<<(std::ostream & os, Path const & path)
+{ return os << path.toString(); }
 
-} /* namespace sharemind { */
-
-sharemind::Path operator+(sharemind::Path path, std::string newComponent) {
-    path.components().emplace_back(std::move(newComponent));
+Path & operator<<(Path & path, std::string str) {
+    path.components().emplace_back(std::move(str));
     return path;
 }
 
-sharemind::Path operator+(sharemind::Path lhs, sharemind::Path rhs) {
-    auto & components = lhs.components();
-    for (auto & component : rhs.components())
-        components.emplace_back(std::move(component));
+Path & operator<<(Path & path, Path const & path2) {
+    auto & cs = path.components();
+    for (auto const & str : path2.components())
+        cs.emplace_back(str);
+    return path;
+}
+
+Path & operator+=(Path & path, std::string str)
+{ return path << str; }
+
+Path & operator+=(Path & path, Path const & path2)
+{ return path << path2; }
+
+Path operator+(Path path, std::string str) {
+    path << str;
+    return path;
+}
+
+Path operator+(Path lhs, Path rhs) {
+    lhs << rhs;
     return lhs;
 }
 
-std::ostream & operator<<(std::ostream & os, sharemind::Path const & path)
-{ return os << path.toString(); }
+} /* namespace sharemind { */
