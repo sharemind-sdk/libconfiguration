@@ -98,13 +98,14 @@ SharemindAddSimpleTests("${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp"
 
 # Packaging:
 SharemindSetupPackaging()
+SET(BV "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.0")
 SharemindAddComponentPackage("lib"
     NAME "libsharemind-configuration"
     DESCRIPTION "Sharemind configuration library"
     DEB_SECTION "libs"
     DEB_DEPENDS
-        "libboost-filesystem-dev (>= 1.50)"
-        "libboost-iostreams-dev (>= 1.50)"
+        "libboost-filesystem${BV}"
+        "libboost-iostreams${BV}"
         "libstdc++6 (>= 4.8.0)"
         "libc6 (>= 2.19)"
 )
