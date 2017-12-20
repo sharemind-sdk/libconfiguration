@@ -106,6 +106,8 @@ SharemindAddComponentPackage("lib"
     DEB_DEPENDS
         "libboost-filesystem${BV}"
         "libboost-iostreams${BV}"
+        "libboost-regex${BV}"
+        "libboost-system${BV}"
         "libstdc++6 (>= 4.8.0)"
         "libc6 (>= 2.19)"
 )
@@ -116,8 +118,7 @@ SharemindAddComponentPackage("dev"
     DEB_DEPENDS
         "libsharemind-configuration (= ${SharemindLibConfiguration_VERSION})"
         "libsharemind-cxxheaders-dev (>= 0.1.0)"
-        "libboost-filesystem-dev (>= 1.50)"
-        "libboost-iostreams-dev (>= 1.50)"
+        "libboost-dev (>= 1.50)"
         "libc6-dev (>= 2.19)"
         "libstdc++-dev"
 )
