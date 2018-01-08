@@ -43,7 +43,10 @@ INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
 
 # The library:
 SharemindNewUniqueList(SharemindLibConfiguration_LINK_LIBRARIES
-    ${Boost_LIBRARIES}
+    # Cannot use ${Boost_LIBRARIES) here, because that would link also against
+    # iostreams and regex, but they are not needed, because only the
+    # header-only parts of iostreams are used
+    Boost::filesystem
     ${SharemindCxxHeaders_LIBRARIES}
 )
 SharemindNewUniqueList(SharemindLibConfiguration_INCLUDE_DIRS
@@ -105,8 +108,6 @@ SharemindAddComponentPackage("lib"
     DEB_SECTION "libs"
     DEB_DEPENDS
         "libboost-filesystem${BV}"
-        "libboost-iostreams${BV}"
-        "libboost-regex${BV}"
         "libboost-system${BV}"
         "libstdc++6 (>= 4.8.0)"
         "libc6 (>= 2.19)"
