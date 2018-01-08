@@ -29,7 +29,11 @@ SharemindSetProjectVersion()
 
 
 SET(Boost_USE_STATIC_RUNTIME OFF)
-FIND_PACKAGE(Boost COMPONENTS filesystem iostreams REQUIRED)
+
+# Note: the library also uses Boost::iostreams but that component is not listed
+# here, because only the header-only part of Boost::iostreams is used. We do
+# not want to link against libboost_iostreams and libboost_regex.
+FIND_PACKAGE(Boost COMPONENTS filesystem REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
 
 
@@ -43,10 +47,7 @@ INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
 
 # The library:
 SharemindNewUniqueList(SharemindLibConfiguration_LINK_LIBRARIES
-    # Cannot use ${Boost_LIBRARIES) here, because that would link also against
-    # iostreams and regex, but they are not needed, because only the
-    # header-only parts of iostreams are used
-    Boost::filesystem
+    ${Boost_LIBRARIES}
     ${SharemindCxxHeaders_LIBRARIES}
 )
 SharemindNewUniqueList(SharemindLibConfiguration_INCLUDE_DIRS
