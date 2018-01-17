@@ -26,6 +26,7 @@
 #include <exception>
 #include <memory>
 #include <sharemind/Exception.h>
+#include <sharemind/ExceptionMacros.h>
 #include <sharemind/TemplateFirstType.h>
 #include <sharemind/TemplateContainsType.h>
 #include <string>
@@ -72,53 +73,34 @@ public: /* Types: */
 
     using SizeType = boost::property_tree::ptree::size_type;
 
-    SHAREMIND_DEFINE_EXCEPTION(sharemind::Exception, Exception);
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+    SHAREMIND_DECLARE_EXCEPTION_NOINLINE(sharemind::Exception, Exception);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   NonRootCopyException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
             Exception,
-            NonRootCopyException,
-            "Copying a non-root Configuration object is not currently "
-            "supported!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
+            NoValidConfigurationFileFound);
+    SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, InterpolationException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
+                                                   UnknownVariableException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            InterpolationException,
+            InterpolationSyntaxErrorException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            InterpolationException,
+            InvalidInterpolationException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
+                                                   TimeException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
+                                                   LocalTimeException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
+                                                   StrftimeException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
             Exception,
-            NoValidConfigurationFileFound,
-            "No valid configuration file found!");
-    SHAREMIND_DEFINE_EXCEPTION(Exception, InterpolationException);
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            UnknownVariableException,
-            "Unknown configuration interpolation variable!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            InterpolationSyntaxErrorException,
-            "Interpolation syntax error!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            InvalidInterpolationException,
-            "Invalid interpolation given!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            TimeException,
-            "time() failed!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            LocalTimeException,
-            "localtime_r() failed!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            InterpolationException,
-            StrftimeException,
-            "strftime() failed!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            Exception,
-            FailedToOpenAndParseConfigurationException,
-            "Failed to load or parse a valid configuration!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            Exception,
-            PathNotFoundException,
-            "Path not found in configuration!");
-    SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            Exception,
-            FailedToParseValueException,
-            "Failed to parse value in configuration");
+            FailedToOpenAndParseConfigurationException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   PathNotFoundException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   FailedToParseValueException);
 
     using Iterator =
             boost::transform_iterator<

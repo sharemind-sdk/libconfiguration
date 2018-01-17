@@ -27,16 +27,10 @@
 
 namespace sharemind {
 
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(
-            Exception,
-            GetHomeDirectoryException,
-            "Failed to determine real user directory!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(Exception,
-                                     GetPwUidRException,
-                                     "getpwuid_r() failed!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG(Exception,
-                                     NoSuchEntryException,
-                                     "No such entry in user database!");
+SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                               GetHomeDirectoryException);
+SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception, GetPwUidRException);
+SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception, NoSuchEntryException);
 std::string getHomeDirectory(bool respectEnvironment = true);
 
 } /* namespace Sharemind { */

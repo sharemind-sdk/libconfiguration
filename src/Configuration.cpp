@@ -90,7 +90,7 @@ private: /* Fields: */
 
 };
 
-}
+} // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
@@ -191,6 +191,69 @@ Configuration const Configuration::IteratorTransformer::operator()(
                                  value.second));
     }
 }
+
+SHAREMIND_DEFINE_EXCEPTION_NOINLINE(sharemind::Exception,
+                                    Configuration::,
+                                    Exception);
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        NonRootCopyException,
+        "Copying a non-root Configuration object is not currently "
+        "supported!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        NoValidConfigurationFileFound,
+        "No valid configuration file found!");
+SHAREMIND_DEFINE_EXCEPTION_NOINLINE(Exception,
+                                    Configuration::,
+                                    InterpolationException);
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        UnknownVariableException,
+        "Unknown configuration interpolation variable!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        InterpolationSyntaxErrorException,
+        "Interpolation syntax error!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        InvalidInterpolationException,
+        "Invalid interpolation given!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        TimeException,
+        "time() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        LocalTimeException,
+        "localtime_r() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        InterpolationException,
+        Configuration::,
+        StrftimeException,
+        "strftime() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        FailedToOpenAndParseConfigurationException,
+        "Failed to load or parse a valid configuration!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        PathNotFoundException,
+        "Path not found in configuration!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        FailedToParseValueException,
+        "Failed to parse value in configuration");
 
 Configuration::Interpolation::Interpolation()
     : m_time(Configuration::getLocalTimeTm())
