@@ -26,6 +26,7 @@
 #include <cassert>
 #include <fcntl.h>
 #include <new>
+#include <sharemind/Concat.h>
 #include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
@@ -100,6 +101,8 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
           std::shared_ptr<Interpolation> interpolation_)
         : interpolation(std::move(interpolation_))
     {
+        if (tryPaths.empty())
+            throw NoTryPathsGivenException();
         for (auto const & path : tryPaths) {
             try {
                 initFromPath(path);
@@ -112,13 +115,38 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
                     && ((e.code().category() != std::system_category())
                         || (e.code().value() != ENOENT)))
                     std::throw_with_nested(
-                                FailedToOpenAndParseConfigurationException());
+                                FailedToOpenAndParseConfigurationException(
+                                    concat("Failed to load or parse a valid "
+                                           "configuration from file \"", path,
+                                           "\"!")));
             } catch (...) {
                 std::throw_with_nested(
-                            FailedToOpenAndParseConfigurationException());
+                            FailedToOpenAndParseConfigurationException(
+                                concat("Failed to load or parse a valid "
+                                       "configuration from file \"", path,
+                                       "\"!")));
             }
         }
-        throw NoValidConfigurationFileFound();
+        auto size =
+                sizeof("No valid configuration file found after trying paths")
+                + (tryPaths.size() * 4u);
+        for (auto const & path : tryPaths)
+            size += path.size();
+        std::string errorMessage;
+        errorMessage.reserve(size);
+        errorMessage.append("No valid configuration file found after trying "
+                            "paths \"");
+        bool first = true;
+        for (auto const & path : tryPaths) {
+            if (first) {
+                first = false;
+                errorMessage.append(path).append("\"");
+            } else {
+                errorMessage.append(", \"").append(path).append("\"");
+            }
+        }
+        errorMessage.append("!");
+        throw NoValidConfigurationFileFound(errorMessage);
     }
 
     Inner(std::string const & filename_,
@@ -129,7 +157,10 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
             initFromPath(filename_);
         } catch (...) {
             std::throw_with_nested(
-                        FailedToOpenAndParseConfigurationException());
+                        FailedToOpenAndParseConfigurationException(
+                            concat("Failed to load or parse a valid "
+                                   "configuration from file \"", filename_,
+                                   "\"!")));
         }
     }
 
@@ -201,11 +232,14 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         NonRootCopyException,
         "Copying a non-root Configuration object is not currently "
         "supported!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                              Configuration::,
+                                              NoTryPathsGivenException,
+                                              "No try paths given!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
-        NoValidConfigurationFileFound,
-        "No valid configuration file found!");
+        NoValidConfigurationFileFound);
 SHAREMIND_DEFINE_EXCEPTION_NOINLINE(Exception,
                                     Configuration::,
                                     InterpolationException);
@@ -239,11 +273,10 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         StrftimeException,
         "strftime() failed!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
-        FailedToOpenAndParseConfigurationException,
-        "Failed to load or parse a valid configuration!");
+        FailedToOpenAndParseConfigurationException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Exception,
         Configuration::,

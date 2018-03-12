@@ -76,7 +76,9 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_NOINLINE(sharemind::Exception, Exception);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
                                                    NonRootCopyException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   NoTryPathsGivenException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             NoValidConfigurationFileFound);
     SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, InterpolationException);
@@ -94,7 +96,7 @@ public: /* Types: */
                                                    LocalTimeException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
                                                    StrftimeException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             FailedToOpenAndParseConfigurationException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
