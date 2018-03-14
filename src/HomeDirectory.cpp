@@ -56,9 +56,9 @@ std::string getHomeDirectory(bool respectEnvironment) {
         passwd * resultPtr;
         struct BufferDeleter { void operator()(char * const p) { ::free(p); } };
         using Buffer = std::unique_ptr<char[], BufferDeleter>;
-        Buffer buffer{static_cast<char *>(::malloc(bufferSize))};
+        Buffer buffer(static_cast<char *>(::malloc(bufferSize)));
         if (!buffer)
-            throw std::bad_alloc{};
+            throw std::bad_alloc();
         int e;
         while ((e = ::getpwuid_r(::getuid(),
                                  &result,
@@ -78,25 +78,26 @@ std::string getHomeDirectory(bool respectEnvironment) {
                     #endif
                 bufferSize = std::numeric_limits<std::size_t>::max();
             }
-            Buffer newBuffer{static_cast<char *>(::realloc(buffer.get(), newSize))};
+            Buffer newBuffer(
+                        static_cast<char *>(::realloc(buffer.get(), newSize)));
             if (!newBuffer)
-                throw std::bad_alloc{};
+                throw std::bad_alloc();
             buffer.swap(newBuffer);
             newBuffer.release();
         }
         if (e != 0) {
             try {
-                throw ErrnoException{e};
+                throw ErrnoException(e);
             } catch (...) {
-                std::throw_with_nested(GetPwUidRException{});
+                std::throw_with_nested(GetPwUidRException());
             }
         }
         if (!resultPtr)
-            throw NoSuchEntryException{};
+            throw NoSuchEntryException();
         assert(result.pw_dir);
         return result.pw_dir;
     } catch (...) {
-        std::throw_with_nested(GetHomeDirectoryException{});
+        std::throw_with_nested(GetHomeDirectoryException());
     }
 }
 
