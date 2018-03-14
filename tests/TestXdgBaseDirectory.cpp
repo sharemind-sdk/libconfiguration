@@ -117,12 +117,12 @@ int main() {
 
     ::setenv("XDG_DATA_DIRS", ":/asdf::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgDataDirs()
-                         == SV{S(), S("/asdf"), S(), S("/other"), S()});
+                         == SV{S("/asdf"), S("/other")});
     resetXdgEnvironment();
 
     ::setenv("XDG_CONFIG_DIRS", ":/asdf::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgConfigDirs()
-                         == SV{S(), S("/asdf"), S(), S("/other"), S()});
+                         == SV{S("/asdf"), S("/other")});
     resetXdgEnvironment();
 
     ::setenv("XDG_CACHE_HOME", "/asdf", 1);
