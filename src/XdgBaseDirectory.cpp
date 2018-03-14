@@ -23,6 +23,7 @@
 #include <cstring>
 #include <sharemind/Split.h>
 #include "HomeDirectory.h"
+#include "EnsureTrailingSlash_p.h"
 
 
 namespace sharemind {
@@ -36,7 +37,7 @@ inline std::string getDir(char const * const envVarName,
     auto const * const e = std::getenv(envVarName);
     if (!e || !*e)
         return defaultGenerator();
-    return e;
+    return ensureTrailingSlash(e);
 }
 
 template <typename DefaultGenerator>
@@ -54,7 +55,7 @@ inline std::vector<std::string> getDirs(char const * const envVarName,
           [&r](char const * const begin_, char const * const end_) noexcept {
               assert(begin_ <= end_);
               if (begin_ != end_)
-                  r.emplace_back(begin_, end_);
+                  r.emplace_back(ensureTrailingSlash(begin_, end_));
           });
     return r;
 }
@@ -62,10 +63,10 @@ inline std::vector<std::string> getDirs(char const * const envVarName,
 } /* anonymous namespace */
 
 std::string getDefaultXdgDataHome()
-{ return getHomeDirectory() + "/.local/share"; }
+{ return getHomeDirectory() + ".local/share/"; }
 
 std::string getDefaultXdgConfigHome()
-{ return getHomeDirectory() + "/.config"; }
+{ return getHomeDirectory() + ".config/"; }
 
 std::vector<std::string> const & getDefaultXdgDataDirs() {
     static std::vector<std::string> const r{std::string("/usr/local/share/"),
@@ -78,7 +79,7 @@ std::vector<std::string> const & getDefaultXdgConfigDirs() {
     return r;
 }
 
-std::string getDefaultXdgCacheHome() { return getHomeDirectory() + "/.cache"; }
+std::string getDefaultXdgCacheHome() { return getHomeDirectory() + ".cache/"; }
 
 std::string getXdgDataHome()
 { return getDir("XDG_DATA_HOME", &getDefaultXdgDataHome); }
@@ -96,7 +97,6 @@ std::string getXdgCacheHome()
 { return getDir("XDG_CACHE_HOME", &getDefaultXdgCacheHome); }
 
 std::vector<std::string> getXdgConfigPaths(std::string const & suffix) {
-    assert(suffix.empty() || suffix[0u] == '/');
     std::vector<std::string> r;
     r.emplace_back(getXdgConfigHome() + suffix);
     for (auto & path : getXdgConfigDirs())
@@ -105,7 +105,6 @@ std::vector<std::string> getXdgConfigPaths(std::string const & suffix) {
 }
 
 std::vector<std::string> getXdgDataPaths(std::string const & suffix) {
-    assert(suffix.empty() || suffix[0u] == '/');
     std::vector<std::string> r;
     r.emplace_back(getXdgDataHome() + suffix);
     for (auto & path : getXdgDataDirs())

@@ -58,13 +58,13 @@ int main() {
             []() {
                 auto const defDataHome(sharemind::getDefaultXdgDataHome());
                 SHAREMIND_TESTASSERT(
-                            defDataHome
-                            == sharemind::getHomeDirectory() + "/.local/share");
+                        defDataHome
+                        == sharemind::getHomeDirectory() + ".local/share/");
 
                 auto const defConfigHome(sharemind::getDefaultXdgConfigHome());
                 SHAREMIND_TESTASSERT(
                             defConfigHome
-                            == sharemind::getHomeDirectory() + "/.config");
+                            == sharemind::getHomeDirectory() + ".config/");
 
                 auto const defDataDirs(sharemind::getDefaultXdgDataDirs());
                 SHAREMIND_TESTASSERT(defDataDirs.size() == 2u);
@@ -78,7 +78,7 @@ int main() {
                 auto const defCacheHome(sharemind::getDefaultXdgCacheHome());
                 SHAREMIND_TESTASSERT(
                             sharemind::getDefaultXdgCacheHome()
-                            == sharemind::getHomeDirectory() + "/.cache");
+                            == sharemind::getHomeDirectory() + ".cache/");
             };
     testDefaults();
     ::setenv("HOME", "/sharemindTests", 1);
@@ -108,25 +108,35 @@ int main() {
     resetXdgEnvironment();
 
     ::setenv("XDG_DATA_HOME", "/asdf", 1);
-    SHAREMIND_TESTASSERT(sharemind::getXdgDataHome() == "/asdf");
+    SHAREMIND_TESTASSERT(sharemind::getXdgDataHome() == "/asdf/");
+    resetXdgEnvironment();
+
+    ::setenv("XDG_DATA_HOME", "/asdf/", 1);
+    SHAREMIND_TESTASSERT(sharemind::getXdgDataHome() == "/asdf/");
     resetXdgEnvironment();
 
     ::setenv("XDG_CONFIG_HOME", "/asdf", 1);
-    SHAREMIND_TESTASSERT(sharemind::getXdgConfigHome() == "/asdf");
+    SHAREMIND_TESTASSERT(sharemind::getXdgConfigHome() == "/asdf/");
+    resetXdgEnvironment();
+    ::setenv("XDG_CONFIG_HOME", "/asdf/", 1);
+    SHAREMIND_TESTASSERT(sharemind::getXdgConfigHome() == "/asdf/");
     resetXdgEnvironment();
 
-    ::setenv("XDG_DATA_DIRS", ":/asdf::/other:", 1);
+    ::setenv("XDG_DATA_DIRS", ":/asdf/::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgDataDirs()
-                         == SV{S("/asdf"), S("/other")});
+                         == SV{S("/asdf/"), S("/other/")});
     resetXdgEnvironment();
 
-    ::setenv("XDG_CONFIG_DIRS", ":/asdf::/other:", 1);
+    ::setenv("XDG_CONFIG_DIRS", ":/asdf/::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgConfigDirs()
-                         == SV{S("/asdf"), S("/other")});
+                         == SV{S("/asdf/"), S("/other/")});
     resetXdgEnvironment();
 
     ::setenv("XDG_CACHE_HOME", "/asdf", 1);
-    SHAREMIND_TESTASSERT(sharemind::getXdgCacheHome() == "/asdf");
+    SHAREMIND_TESTASSERT(sharemind::getXdgCacheHome() == "/asdf/");
+    resetXdgEnvironment();
+    ::setenv("XDG_CACHE_HOME", "/asdf/", 1);
+    SHAREMIND_TESTASSERT(sharemind::getXdgCacheHome() == "/asdf/");
     resetXdgEnvironment();
 
     ::setenv("XDG_CONFIG_HOME", "/conf", 1);
@@ -136,7 +146,7 @@ int main() {
         expected.emplace_back("/conf/asdf");
         expected.emplace_back("/conf2/asdf");
         expected.emplace_back("/otherconf/asdf");
-        SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths("/asdf") == expected);
+        SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths("asdf") == expected);
     }
     resetXdgEnvironment();
 
@@ -147,7 +157,7 @@ int main() {
         expected.emplace_back("/data/asdf");
         expected.emplace_back("/data2/asdf");
         expected.emplace_back("/otherdata/asdf");
-        SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths("/asdf") == expected);
+        SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths("asdf") == expected);
     }
     resetXdgEnvironment();
 

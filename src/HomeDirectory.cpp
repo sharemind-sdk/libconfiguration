@@ -26,6 +26,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "EnsureTrailingSlash_p.h"
 
 
 namespace sharemind {
@@ -47,7 +48,7 @@ std::string getHomeDirectory(bool respectEnvironment) {
         if (respectEnvironment) {
             auto const * const envVar = std::getenv("HOME");
             if (envVar && !*envVar)
-                return envVar;
+                return ensureTrailingSlash(envVar);
         }
         long const maxSize = ::sysconf(_SC_GETPW_R_SIZE_MAX);
         std::size_t bufferSize =
@@ -95,7 +96,7 @@ std::string getHomeDirectory(bool respectEnvironment) {
         if (!resultPtr)
             throw NoSuchEntryException();
         assert(result.pw_dir);
-        return result.pw_dir;
+        return ensureTrailingSlash(result.pw_dir);
     } catch (...) {
         std::throw_with_nested(GetHomeDirectoryException());
     }

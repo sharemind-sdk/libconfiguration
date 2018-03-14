@@ -40,6 +40,10 @@ FIND_PACKAGE(SharemindCxxHeaders REQUIRED)
 # Headers:
 FILE(GLOB_RECURSE SharemindLibConfiguration_HEADERS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
+FILE(GLOB_RECURSE SharemindLibConfiguration_PRIVATE_HEADERS
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/*_p.h")
+LIST(REMOVE_ITEM SharemindLibConfiguration_HEADERS
+     ${SharemindLibConfiguration_PRIVATE_HEADERS})
 INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
         DESTINATION "include/sharemind/libconfiguration"
         COMPONENT "dev")
@@ -65,6 +69,7 @@ SharemindAddSharedLibrary("libconfiguration"
     SOURCES
         ${SharemindLibConfiguration_SOURCES}
         ${SharemindLibConfiguration_HEADERS}
+        ${SharemindLibConfiguration_PRIVATE_HEADERS}
     INCLUDE_DIRECTORIES
         ${SharemindLibConfiguration_INCLUDE_DIRS}
     LEGACY_DEFINITIONS

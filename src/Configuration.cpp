@@ -508,9 +508,9 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
         std::string const & configName)
 {
     assert(!configName.empty());
-    std::string suffix("/sharemind/" + configName + ".conf");
+    std::string suffix("sharemind/" + configName + ".conf");
     std::vector<std::string> r(getXdgConfigPaths(suffix));
-    r.emplace_back("/etc" + std::move(suffix));
+    r.emplace_back("/etc/" + std::move(suffix));
     return r;
 }
 
