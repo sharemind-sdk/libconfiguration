@@ -93,6 +93,7 @@ std::string getHomeDirectory(bool respectEnvironment) {
         }
         if (!resultPtr)
             throw NoSuchEntryException{};
+        assert(result.pw_dir);
         return result.pw_dir;
     } catch (...) {
         std::throw_with_nested(GetHomeDirectoryException{});
