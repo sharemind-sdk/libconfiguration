@@ -26,12 +26,11 @@
 #include "../src/HomeDirectory.h"
 
 
-using S = std::string;
-using SV = std::vector<S>;
+using SV = std::vector<std::string>;
 
 #define TEST_RETURNS_TYPE(type,...) \
     static_assert(std::is_same<type, decltype(__VA_ARGS__)>::value, "")
-#define TEST_RETURNS_STRING(...) TEST_RETURNS_TYPE(S, __VA_ARGS__)
+#define TEST_RETURNS_STRING(...) TEST_RETURNS_TYPE(std::string, __VA_ARGS__)
 #define TEST_RETURNS_STRING_VECTOR(...) TEST_RETURNS_TYPE(SV, __VA_ARGS__)
 TEST_RETURNS_STRING(sharemind::getDefaultXdgDataHome());
 TEST_RETURNS_STRING(sharemind::getDefaultXdgConfigHome());
@@ -124,12 +123,12 @@ int main() {
 
     ::setenv("XDG_DATA_DIRS", ":/asdf/::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgDataDirs()
-                         == SV{S("/asdf/"), S("/other/")});
+                         == SV{"/asdf/", "/other/"});
     resetXdgEnvironment();
 
     ::setenv("XDG_CONFIG_DIRS", ":/asdf/::/other:", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgConfigDirs()
-                         == SV{S("/asdf/"), S("/other/")});
+                         == SV{"/asdf/", "/other/"});
     resetXdgEnvironment();
 
     ::setenv("XDG_CACHE_HOME", "/asdf", 1);
@@ -145,38 +144,20 @@ int main() {
     ::setenv("XDG_CONFIG_DIRS", "/conf2:/otherconf", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths()
                          == sharemind::getXdgConfigPaths(emptyString));
-    {
-        SV expected;
-        expected.emplace_back("/conf/");
-        expected.emplace_back("/conf2/");
-        expected.emplace_back("/otherconf/");
-        SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths() == expected);
-    }{
-        SV expected;
-        expected.emplace_back("/conf/asdf");
-        expected.emplace_back("/conf2/asdf");
-        expected.emplace_back("/otherconf/asdf");
-        SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths("asdf") == expected);
-    }
+    SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths()
+                         == SV{"/conf/", "/conf2/", "/otherconf/"});
+    SHAREMIND_TESTASSERT(sharemind::getXdgConfigPaths("asdf")
+                         == SV{"/conf/asdf", "/conf2/asdf", "/otherconf/asdf"});
     resetXdgEnvironment();
 
     ::setenv("XDG_DATA_HOME", "/data", 1);
     ::setenv("XDG_DATA_DIRS", "/data2:/otherdata", 1);
     SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths()
                          == sharemind::getXdgDataPaths(emptyString));
-    {
-        SV expected;
-        expected.emplace_back("/data/");
-        expected.emplace_back("/data2/");
-        expected.emplace_back("/otherdata/");
-        SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths() == expected);
-    }{
-        SV expected;
-        expected.emplace_back("/data/asdf");
-        expected.emplace_back("/data2/asdf");
-        expected.emplace_back("/otherdata/asdf");
-        SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths("asdf") == expected);
-    }
+    SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths()
+                         == SV{"/data/", "/data2/", "/otherdata/"});
+    SHAREMIND_TESTASSERT(sharemind::getXdgDataPaths("asdf")
+                         == SV{"/data/asdf", "/data2/asdf", "/otherdata/asdf"});
     resetXdgEnvironment();
 
 
