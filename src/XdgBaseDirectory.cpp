@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <sharemind/Split.h>
+#include <type_traits>
 #include "HomeDirectory.h"
 #include "EnsureTrailingSlash_p.h"
 
@@ -97,17 +98,27 @@ std::string getXdgCacheHome()
 { return getDir("XDG_CACHE_HOME", &getDefaultXdgCacheHome); }
 
 std::vector<std::string> getXdgConfigPaths(std::string const & suffix) {
+    auto configDirs(getXdgConfigDirs());
+
     std::vector<std::string> r;
+    static_assert(std::is_unsigned<decltype(configDirs.size())>::value, "");
+    r.reserve(configDirs.size() + 1u); // Skipping overflow checks here is okay.
+
     r.emplace_back(getXdgConfigHome() + suffix);
-    for (auto & path : getXdgConfigDirs())
+    for (auto & path : configDirs)
         r.emplace_back(std::move(path) + suffix);
     return r;
 }
 
 std::vector<std::string> getXdgDataPaths(std::string const & suffix) {
+    auto dataDirs(getXdgDataDirs());
+
     std::vector<std::string> r;
+    static_assert(std::is_unsigned<decltype(dataDirs.size())>::value, "");
+    r.reserve(dataDirs.size() + 1u); // Skipping overflow checks here is okay.
+
     r.emplace_back(getXdgDataHome() + suffix);
-    for (auto & path : getXdgDataDirs())
+    for (auto & path : dataDirs)
         r.emplace_back(std::move(path) + suffix);
     return r;
 }
