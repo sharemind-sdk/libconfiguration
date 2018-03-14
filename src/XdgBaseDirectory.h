@@ -53,6 +53,13 @@ std::vector<std::string> getXdgConfigDirs();
 std::string getXdgCacheHome();
 
 /**
+    \brief Shorthand to retrieve all configuration paths.
+    \returns a vector of configuration paths containing the value of
+             getXdgConfigHome() and all values from getXdgConfigDirs() in order.
+*/
+std::vector<std::string> getXdgConfigPaths();
+
+/**
     \brief Shorthand to retrieve all configuration paths combined with the given
            suffix.
     \arg[in] suffix Suffix to append to each path.
@@ -60,8 +67,14 @@ std::string getXdgCacheHome();
              getXdgConfigHome() and all values from getXdgConfigDirs() in order,
              with the given suffix appended to each element.
 */
-std::vector<std::string> getXdgConfigPaths(
-        std::string const & suffix = std::string());
+std::vector<std::string> getXdgConfigPaths(std::string const & suffix);
+
+/**
+    \brief Shorthand to retrieve all data paths.
+    \returns a vector of data paths containing the value of getXdgDataHome() and
+             all values from getXdgDataDirs() in order.
+*/
+std::vector<std::string> getXdgDataPaths();
 
 /**
     \brief Shorthand to retrieve all data paths combined with the given suffix.
@@ -70,8 +83,7 @@ std::vector<std::string> getXdgConfigPaths(
              all values from getXdgDataDirs() in order, with the given suffix
              appended to each element.
 */
-std::vector<std::string> getXdgDataPaths(
-        std::string const & suffix = std::string());
+std::vector<std::string> getXdgDataPaths(std::string const & suffix);
 
 } /* namespace Sharemind { */
 
