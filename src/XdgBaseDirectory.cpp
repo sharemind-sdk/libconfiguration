@@ -98,54 +98,42 @@ std::string getXdgCacheHome()
 { return getDir("XDG_CACHE_HOME", &getDefaultXdgCacheHome); }
 
 std::vector<std::string> getXdgConfigPaths() {
-    auto configDirs(getXdgConfigDirs());
-
-    std::vector<std::string> r;
-    static_assert(std::is_unsigned<decltype(configDirs.size())>::value, "");
-    r.reserve(configDirs.size() + 1u); // Skipping overflow checks here is okay.
-
-    r.emplace_back(getXdgConfigHome());
-    for (auto & path : configDirs)
-        r.emplace_back(std::move(path));
+    auto r(getXdgConfigDirs());
+    static_assert(std::is_unsigned<decltype(r.size())>::value, "");
+    r.reserve(r.size() + 1u); // Skipping overflow checks here is okay.
+    r.emplace(r.begin(), getXdgConfigHome());
     return r;
 }
 
 std::vector<std::string> getXdgConfigPaths(std::string const & suffix) {
-    auto configDirs(getXdgConfigDirs());
-
-    std::vector<std::string> r;
-    static_assert(std::is_unsigned<decltype(configDirs.size())>::value, "");
-    r.reserve(configDirs.size() + 1u); // Skipping overflow checks here is okay.
-
-    r.emplace_back(getXdgConfigHome() + suffix);
-    for (auto & path : configDirs)
-        r.emplace_back(std::move(path) + suffix);
+    auto r(getXdgConfigDirs());
+    for (auto & path : r) {
+        path.reserve(path.size() + suffix.size());
+        path.append(suffix);
+    }
+    static_assert(std::is_unsigned<decltype(r.size())>::value, "");
+    r.reserve(r.size() + 1u); // Skipping overflow checks here is okay.
+    r.emplace(r.begin(), getXdgConfigHome() + suffix);
     return r;
 }
 
 std::vector<std::string> getXdgDataPaths() {
-    auto dataDirs(getXdgDataDirs());
-
-    std::vector<std::string> r;
-    static_assert(std::is_unsigned<decltype(dataDirs.size())>::value, "");
-    r.reserve(dataDirs.size() + 1u); // Skipping overflow checks here is okay.
-
-    r.emplace_back(getXdgDataHome());
-    for (auto & path : dataDirs)
-        r.emplace_back(std::move(path));
+    auto r(getXdgDataDirs());
+    static_assert(std::is_unsigned<decltype(r.size())>::value, "");
+    r.reserve(r.size() + 1u); // Skipping overflow checks here is okay.
+    r.emplace(r.begin(), getXdgDataHome());
     return r;
 }
 
 std::vector<std::string> getXdgDataPaths(std::string const & suffix) {
-    auto dataDirs(getXdgDataDirs());
-
-    std::vector<std::string> r;
-    static_assert(std::is_unsigned<decltype(dataDirs.size())>::value, "");
-    r.reserve(dataDirs.size() + 1u); // Skipping overflow checks here is okay.
-
-    r.emplace_back(getXdgDataHome() + suffix);
-    for (auto & path : dataDirs)
-        r.emplace_back(std::move(path) + suffix);
+    auto r(getXdgDataDirs());
+    for (auto & path : r) {
+        path.reserve(path.size() + suffix.size());
+        path.append(suffix);
+    }
+    static_assert(std::is_unsigned<decltype(r.size())>::value, "");
+    r.reserve(r.size() + 1u); // Skipping overflow checks here is okay.
+    r.emplace(r.begin(), getXdgDataHome() + suffix);
     return r;
 }
 
