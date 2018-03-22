@@ -25,6 +25,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <cassert>
 #include <fcntl.h>
+#include <limits>
 #include <new>
 #include <sharemind/Concat.h>
 #include <sharemind/MakeUnique.h>
@@ -39,6 +40,28 @@
 namespace sharemind {
 
 namespace {
+
+template <typename T>
+constexpr inline auto capMaxToSizeT(T v)
+        -> typename std::enable_if<
+                (std::numeric_limits<T>::max()
+                 <= std::numeric_limits<std::size_t>::max()),
+                std::size_t
+            >::type
+{ return static_cast<std::size_t>(v); }
+
+template <typename T>
+constexpr inline auto capMaxToSizeT(T v)
+        -> typename std::enable_if<
+                (std::numeric_limits<T>::max()
+                 > std::numeric_limits<std::size_t>::max()),
+                std::size_t
+            >::type
+{
+    return (v > std::numeric_limits<std::size_t>::max())
+           ? std::numeric_limits<std::size_t>::max()
+           : static_cast<std::size_t>(v);
+}
 
 class PosixFileInputSource {
 
@@ -71,11 +94,7 @@ public: /* Methods: */
         if (bufferSize <= 0)
             return 0;
         using US = std::make_unsigned<std::streamsize>::type;
-        std::size_t const readSize =
-                (static_cast<US>(bufferSize)
-                 > std::numeric_limits<std::size_t>::max())
-                ? std::numeric_limits<std::size_t>::max()
-                : static_cast<std::size_t>(bufferSize);
+        std::size_t const readSize = capMaxToSizeT(static_cast<US>(bufferSize));
         auto const r = ::read(*m_fd, buffer, readSize);
         if (r > 0u)
             return r;
