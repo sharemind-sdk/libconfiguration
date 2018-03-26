@@ -41,6 +41,10 @@ namespace sharemind {
 
 namespace {
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-template"
+#endif
 template <typename T>
 constexpr inline auto capMaxToSizeT(T v)
         -> typename std::enable_if<
@@ -62,6 +66,9 @@ constexpr inline auto capMaxToSizeT(T v)
            ? std::numeric_limits<std::size_t>::max()
            : static_cast<std::size_t>(v);
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 class PosixFileInputSource {
 
