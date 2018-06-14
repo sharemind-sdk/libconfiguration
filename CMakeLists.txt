@@ -107,7 +107,10 @@ SharemindAddSimpleTests("${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp"
 
 # Packaging:
 SharemindSetupPackaging()
-SET(BV "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.0")
+SET(BV
+    "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}"
+)
+
 SharemindAddComponentPackage("lib"
     NAME "libsharemind-configuration"
     DESCRIPTION "Sharemind configuration library"
