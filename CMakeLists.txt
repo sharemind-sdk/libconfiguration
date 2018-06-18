@@ -126,7 +126,7 @@ SharemindAddComponentPackage("dev"
     DESCRIPTION "Sharemind configuration library development headers"
     DEB_SECTION "libdevel"
     DEB_DEPENDS
-        "libsharemind-configuration (= ${SharemindLibConfiguration_VERSION})"
+        "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
         "libsharemind-cxxheaders-dev (>= 0.1.0)"
         "libboost-dev (>= 1.50)"
         "libc6-dev (>= 2.19)"
@@ -137,6 +137,6 @@ SharemindAddComponentPackage("debug"
     DESCRIPTION "Sharemind configuration library debug symbols"
     DEB_SECTION "debug"
     DEB_DEPENDS
-        "libsharemind-configuration (= ${SharemindLibConfiguration_VERSION})"
+        "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
 )
 SharemindPackagingFinalize()
