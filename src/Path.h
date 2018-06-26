@@ -20,9 +20,9 @@
 #ifndef SHAREMIND_LIBCONFIGURATION_PATH_H
 #define SHAREMIND_LIBCONFIGURATION_PATH_H
 
-#include <string>
-#include <ostream>
+#include <iosfwd>
 #include <sstream>
+#include <string>
 #include <type_traits>
 #include <vector>
 

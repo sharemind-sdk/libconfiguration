@@ -23,6 +23,7 @@
 #include <cassert>
 #include <limits>
 #include <new>
+#include <ostream>
 #include <sharemind/compiler-support/GccVersion.h>
 #include <utility>
 
