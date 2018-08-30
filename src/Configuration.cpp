@@ -211,43 +211,43 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
 };
 
-Configuration::IteratorTransformer::IteratorTransformer(
-        Configuration const & parent)
-    : m_path(parent.m_path)
-    , m_inner(parent.m_inner)
-{}
-
-Configuration Configuration::IteratorTransformer::operator()(
-        boost::property_tree::ptree::value_type & value) const
-{
-    if (m_path) {
-        assert(!m_path->empty());
-        return Configuration(std::make_shared<Path>((*m_path) + value.first),
-                             m_inner,
-                             value.second);
-    } else {
-        return Configuration(std::make_shared<Path>(value.first),
-                             m_inner,
-                             value.second);
+#define SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE(C,c,...) \
+    Configuration::C ## IteratorTransformer::C ## IteratorTransformer( \
+            C ## IteratorTransformer &&) noexcept = default; \
+    Configuration::C ## IteratorTransformer::C ## IteratorTransformer( \
+            C ## IteratorTransformer const &) noexcept = default; \
+    Configuration::C ## IteratorTransformer::C ## IteratorTransformer( \
+            Configuration const & parent) \
+        : m_path(parent.m_path) \
+        , m_inner(parent.m_inner) \
+    {} \
+    Configuration::C ## IteratorTransformer::~C ## IteratorTransformer() \
+            noexcept = default; \
+    Configuration::C ## IteratorTransformer & \
+    Configuration::C ## IteratorTransformer::operator=( \
+            C ## IteratorTransformer &&) noexcept = default; \
+    Configuration::C ## IteratorTransformer & \
+    Configuration::C ## IteratorTransformer::operator=( \
+            C ## IteratorTransformer const &) noexcept = default; \
+    Configuration c Configuration::C ## IteratorTransformer::operator()( \
+            boost::property_tree::ptree::value_type c & value) const \
+    { \
+        if (m_path) { \
+            assert(!m_path->empty()); \
+            return Configuration( \
+                            std::make_shared<Path>((*m_path) + value.first), \
+                            m_inner, \
+                            __VA_ARGS__); \
+        } else { \
+            return Configuration(std::make_shared<Path>(value.first), \
+                                 m_inner, \
+                                 __VA_ARGS__); \
+        } \
     }
-}
-
-Configuration const Configuration::IteratorTransformer::operator()(
-        boost::property_tree::ptree::value_type const & value) const
-{
-    if (m_path) {
-        assert(!m_path->empty());
-        return Configuration(std::make_shared<Path>((*m_path) + value.first),
-                             m_inner,
-                             const_cast<boost::property_tree::ptree &>(
-                                 value.second));
-    } else {
-        return Configuration(std::make_shared<Path>(value.first),
-                             m_inner,
-                             const_cast<boost::property_tree::ptree &>(
-                                 value.second));
-    }
-}
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE(,,value.second)
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE(Const,const,
+    const_cast<boost::property_tree::ptree &>(value.second))
+#undef SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE
 
 SHAREMIND_DEFINE_EXCEPTION_NOINLINE(sharemind::Exception,
                                     Configuration::,

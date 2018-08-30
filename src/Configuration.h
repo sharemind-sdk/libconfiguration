@@ -49,25 +49,30 @@ private: /* Types: */
     using Translator =
         typename boost::property_tree::translator_between<std::string, T>::type;
 
-    class IteratorTransformer {
-
-    public: /* Methods: */
-
-        IteratorTransformer(Configuration const & parent);
-
-        Configuration operator()(
-                boost::property_tree::ptree::value_type & value) const;
-
-        Configuration const operator()(
-                boost::property_tree::ptree::value_type const & value) const;
-
-    private: /* Fields: */
-
-        std::shared_ptr<Path const> const m_path;
-        std::shared_ptr<Inner> const m_inner;
-
-    };
-    friend class IteratorTransformer;
+    #define SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE(C,c) \
+        class C ## IteratorTransformer { \
+        public: /* Types: */ \
+            using result_type = Configuration c; \
+        public: /* Methods: */ \
+            C ## IteratorTransformer(C ## IteratorTransformer &&) noexcept; \
+            C ## IteratorTransformer(C ## IteratorTransformer const &) \
+                    noexcept; \
+            C ## IteratorTransformer(Configuration const & parent); \
+            ~C ## IteratorTransformer() noexcept; \
+            C ## IteratorTransformer & operator=(C ## IteratorTransformer &&) \
+                    noexcept; \
+            C ## IteratorTransformer & operator=( \
+                    C ## IteratorTransformer const &) noexcept; \
+            Configuration c operator()( \
+                    boost::property_tree::ptree::value_type c & value) const; \
+        private: /* Fields: */ \
+            std::shared_ptr<Path const> m_path; \
+            std::shared_ptr<Inner> m_inner; \
+        }; \
+        friend class C ## IteratorTransformer;
+    SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE(,)
+    SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE(Const,const)
+    #undef SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE
 
 public: /* Types: */
 
@@ -111,7 +116,7 @@ public: /* Types: */
 
     using ConstIterator =
             boost::transform_iterator<
-                IteratorTransformer,
+                ConstIteratorTransformer,
                 boost::property_tree::ptree::const_iterator>;
 
     class Interpolation {
