@@ -190,6 +190,12 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         }
     }
 
+    Inner(Inner &&) = delete;
+    Inner(Inner const &) = default;
+
+    Inner & operator=(Inner &&) = delete;
+    Inner & operator=(Inner const &) = delete;
+
     void initFromPath(std::string const & path) {
         PosixFileInputSource inFile(path);
         boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
