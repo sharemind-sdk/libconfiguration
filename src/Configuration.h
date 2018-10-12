@@ -160,6 +160,9 @@ public: /* Methods: */
 
     virtual ~Configuration() noexcept;
 
+    Configuration & operator=(Configuration && move) noexcept;
+    Configuration & operator=(Configuration const & copy);
+
     std::shared_ptr<Interpolation> const & interpolation() const noexcept;
     void setInterpolation(std::shared_ptr<Interpolation> i) noexcept;
 

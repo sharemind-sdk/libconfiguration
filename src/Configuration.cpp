@@ -450,6 +450,19 @@ Configuration::Configuration(std::shared_ptr<Path const> path,
 
 Configuration::~Configuration() noexcept {}
 
+Configuration & Configuration::operator=(Configuration && move) noexcept
+        = default;
+
+Configuration & Configuration::operator=(Configuration const & copy) {
+    if (copy.m_path)
+        throw NonRootCopyException();
+
+    m_inner = std::make_shared<Inner>(*copy.m_inner);
+    m_path.reset();
+    m_ptree = &m_inner->ptree;
+    return *this;
+}
+
 std::shared_ptr<Configuration::Interpolation> const &
 Configuration::interpolation() const noexcept
 { return m_inner->interpolation; }
