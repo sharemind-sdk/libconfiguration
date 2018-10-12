@@ -411,11 +411,7 @@ void Configuration::Interpolation::resetTime(std::time_t theTime)
 void Configuration::Interpolation::resetTime(::tm const & theTime)
 { m_time = theTime; }
 
-Configuration::Configuration(Configuration && move)
-    : m_path(std::move(move.m_path))
-    , m_inner(std::move(move.m_inner))
-    , m_ptree(&m_inner->ptree)
-{}
+Configuration::Configuration(Configuration && move) noexcept = default;
 
 Configuration::Configuration(Configuration const & copy)
     : m_path(!copy.m_path ? nullptr : throw NonRootCopyException())

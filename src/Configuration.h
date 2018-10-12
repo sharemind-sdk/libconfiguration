@@ -145,7 +145,7 @@ public: /* Types: */
 
 public: /* Methods: */
 
-    Configuration(Configuration && move);
+    Configuration(Configuration && move) noexcept;
     Configuration(Configuration const & copy);
 
     Configuration(std::string const & filename);
