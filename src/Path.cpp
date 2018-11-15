@@ -24,7 +24,6 @@
 #include <limits>
 #include <new>
 #include <ostream>
-#include <sharemind/compiler-support/GccVersion.h>
 #include <utility>
 
 
@@ -35,14 +34,7 @@ Path::Path() {}
 Path::Path(Path &&) noexcept = default;
 Path::Path(Path const &) = default;
 
-#if !defined(SHAREMIND_GCC_VERSION) || (SHAREMIND_GCC_VERSION >= 50000)
 Path & Path::operator=(Path &&) noexcept = default;
-#else
-Path & Path::operator=(Path && move) noexcept {
-    m_components = std::move(move.m_components);
-    return *this;
-}
-#endif
 
 Path & Path::operator=(Path const &) = default;
 
