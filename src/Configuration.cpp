@@ -28,7 +28,6 @@
 #include <limits>
 #include <new>
 #include <sharemind/Concat.h>
-#include <sharemind/MakeUnique.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
 #include <sys/stat.h>
