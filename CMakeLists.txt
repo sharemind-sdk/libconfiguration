@@ -59,7 +59,7 @@ SharemindNewUniqueList(SharemindLibConfiguration_INCLUDE_DIRS
 SharemindNewUniqueList(SharemindLibConfiguration_DEFINITIONS
     ${SharemindCxxHeaders_DEFINITIONS}
 )
-SharemindSetCxx11CompileOptions()
+SharemindSetCxx14CompileOptions()
 FILE(GLOB_RECURSE SharemindLibConfiguration_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 SharemindAddSharedLibrary("libconfiguration"
