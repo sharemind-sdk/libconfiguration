@@ -169,6 +169,8 @@ public: /* Methods: */
     void loadInterpolationOverridesFromSection(
             std::string const & sectionName = "Interpolations");
 
+    /** \returns the path of the file from which the root of the configuration
+                 was loaded from. */
     std::string const & filename() const noexcept;
 
     std::string const & key() const noexcept;
