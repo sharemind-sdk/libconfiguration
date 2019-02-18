@@ -27,6 +27,7 @@
 #include <memory>
 #include <sharemind/Exception.h>
 #include <sharemind/ExceptionMacros.h>
+#include <sharemind/StringView.h>
 #include <sharemind/TemplateFirstType.h>
 #include <sharemind/TemplateContainsType.h>
 #include <string>
@@ -150,9 +151,8 @@ public: /* Types: */
         Interpolation();
         virtual ~Interpolation() noexcept;
 
-        std::string interpolate(std::string const & s) const;
-        std::string interpolate(std::string const & s,
-                                ::tm const & theTime) const;
+        std::string interpolate(StringView s) const;
+        std::string interpolate(StringView s, ::tm const & theTime) const;
 
         void addVariable(std::string var, std::string value);
 
@@ -263,9 +263,8 @@ public: /* Methods: */
 
     void erase(Path const & path) noexcept;
 
-    std::string interpolate(std::string const & value) const;
-    std::string interpolate(std::string const & value,
-                            ::tm const & theTime) const;
+    std::string interpolate(StringView value) const;
+    std::string interpolate(StringView value, ::tm const & theTime) const;
 
     static std::vector<std::string> defaultSharemindToolTryPaths(
             std::string const & configName);

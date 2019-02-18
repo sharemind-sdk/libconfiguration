@@ -32,7 +32,6 @@
 #include <set>
 #include <sharemind/Concat.h>
 #include <sharemind/Optional.h>
-#include <sharemind/StringView.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
 #include <sys/stat.h>
@@ -668,11 +667,11 @@ Configuration::Interpolation::Interpolation()
 
 Configuration::Interpolation::~Interpolation() noexcept {}
 
-std::string Configuration::Interpolation::interpolate(std::string const & s)
+std::string Configuration::Interpolation::interpolate(StringView s)
         const
 { return interpolate(s, Configuration::getLocalTimeTm()); }
 
-std::string Configuration::Interpolation::interpolate(std::string const & s,
+std::string Configuration::Interpolation::interpolate(StringView s,
                                                       ::tm const & theTime)
         const
 {
@@ -680,64 +679,53 @@ std::string Configuration::Interpolation::interpolate(std::string const & s,
     r.reserve(s.size());
     char format[3] = "% ";
     char buffer[32] = "";
-    for (auto it = s.cbegin(); it != s.cend(); ++it) {
-        if (*it != '%') { // Handle regular characters:
-            auto const start(it); // Regular characters range start
-            do {
-                ++it;
-                if (it == s.cend()) {
-                    r.insert(r.end(), start, it);
-                    return r;
-                }
-            } while (*it != '%');
-            r.insert(r.end(), start, it);
-        }
-        assert(*it == '%');
-        // Handle escapes
-        if (++it == s.cend())
-            throw InterpolationSyntaxErrorException();
-        switch (*it) {
-        case '%': r.push_back('%'); break;
+    for (auto escapePos = s.findFirstOf('%');
+         escapePos < s.size();
+         escapePos = s.findFirstOf('%', escapePos))
+    {
+        if (escapePos == s.size() - 1u)
+            throw Configuration::InterpolationSyntaxErrorException();
+        auto const escapeChar = s[escapePos + 1u];
+        switch (escapeChar) {
+        case '%':
+            r.append(s.data(), escapePos + 1u);
+            s.removePrefix(escapePos + 2u);
+            escapePos = 0u;
+            continue;
         case 'C': case 'd': case 'D': case 'e': case 'F': case 'H':
         case 'I': case 'j': case 'm': case 'M': case 'p': case 'R':
         case 'S': case 'T': case 'u': case 'U': case 'V': case 'w':
         case 'W': case 'y': case 'Y': case 'z': {
-            format[1u] = *it;
-            if (std::strftime(buffer, 32u, format, &theTime)) {
-                r.append(buffer);
-            } else {
+            format[1u] = escapeChar;
+            if (!std::strftime(buffer, 32u, format, &theTime))
                 throw StrftimeException();
-            }
-            break;
+            r.append(s.data(), escapePos).append(buffer);
+            s.removePrefix(escapePos + 2u);
+            escapePos = 0u;
+            continue;
         }
         case '{': {
-            ++it;
-            auto const start(it); // Start of range between curly braces
-            for (;; ++it) {
-                if (it == s.cend())
-                    throw InterpolationSyntaxErrorException();
-                switch (*it) {
-                case '%': case '{':
-                    throw InterpolationSyntaxErrorException();
-                case '}':
-                    break;
-                default: // All other characters allowed between {}
-                    continue;
-                }
-                // Do the replacement:
-                auto const matchIt(m_map.find(std::string(start, it)));
-                if (matchIt == m_map.cend())
-                    throw UnknownVariableException();
-                r.append(matchIt->second);
-                break;
-            }
+            auto const escapeStartPos = escapePos + 2u;
+            auto const escapeEndPos =
+                    s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
+            if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
+                throw Configuration::InterpolationSyntaxErrorException();
+            auto const matchIt(
+                        m_map.find(
+                            s.substr(escapeStartPos,
+                                     escapeEndPos - escapeStartPos).str()));
+            if (matchIt == m_map.cend())
+                throw UnknownVariableException();
+            r.append(s.data(), escapePos).append(matchIt->second);
+            s.removePrefix(escapeEndPos + 1u);
+            escapePos = 0u;
             break;
         }
         default:
             throw InvalidInterpolationException();
         }
     }
-    return r;
+    return r.append(s.data(), s.size());
 }
 
 void Configuration::Interpolation::addVariable(std::string var,
@@ -873,18 +861,18 @@ void Configuration::erase(Path const & path) noexcept {
     }
 }
 
-std::string Configuration::interpolate(std::string const & value) const {
+std::string Configuration::interpolate(StringView value) const {
     return m_inner->m_interpolation
            ? m_inner->m_interpolation->interpolate(value)
-           : value;
+           : value.str();
 }
 
-std::string Configuration::interpolate(std::string const & value,
+std::string Configuration::interpolate(StringView value,
                                        ::tm const & theTime) const
 {
     return m_inner->m_interpolation
            ? m_inner->m_interpolation->interpolate(value, theTime)
-           : value;
+           : value.str();
 }
 
 std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
