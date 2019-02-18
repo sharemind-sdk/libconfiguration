@@ -381,6 +381,42 @@ std::string FileParseJob::parseFile(TopLevelParseState & tls) {
     }
 }
 
+template <typename T>
+using Translator =
+    typename boost::property_tree::translator_between<std::string, T>::type;
+
+template <typename T> struct ValueHandler {
+    static T parse(std::string value) {
+        try {
+            if (auto const optionalValue = Translator<T>().get_value(value))
+                return *optionalValue;
+            throw Configuration::FailedToParseValueException();
+        } catch (...) {
+            std::throw_with_nested(
+                        Configuration::FailedToParseValueException());
+        }
+    }
+    static T generateDefault(T value) noexcept { return value; }
+};
+
+template <> struct ValueHandler<std::string> {
+    static std::string parse(std::string value) { return value; }
+    static std::string generateDefault(StringView value) { return value.str(); }
+};
+
+boost::property_tree::ptree const & findChild(
+        boost::property_tree::ptree const * r,
+        Path const & path_)
+{
+    try {
+        for (auto const & component : path_.components())
+            r = std::addressof(r->get_child(component));
+    } catch (...) {
+        std::throw_with_nested(Configuration::PathNotFoundException());
+    }
+    return *r;
+}
+
 } // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
@@ -896,44 +932,66 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
     return theTimeTm;
 }
 
-#define GET(name,R,D,...) \
-    R Configuration::name(Path const & path_, D v) const { \
-        boost::property_tree::ptree const * child; \
-        try { \
-            child = &findChild(path_); \
-        } catch (...) { \
-            return __VA_ARGS__; \
-        } \
-        return parseValue<R>(*child); \
-    }
+template <typename T>
+constexpr bool const isAlsoFixedSize =
+        std::is_same<T, std::int8_t>::value
+        || std::is_same<T, std::int16_t>::value
+        || std::is_same<T, std::int32_t>::value
+        || std::is_same<T, std::int64_t>::value
+        || std::is_same<T, std::uint8_t>::value
+        || std::is_same<T, std::uint16_t>::value
+        || std::is_same<T, std::uint32_t>::value
+        || std::is_same<T, std::uint64_t>::value;
+static_assert(isAlsoFixedSize<std::size_t>, "");
+static_assert(isAlsoFixedSize<signed char>, "");
+static_assert(isAlsoFixedSize<unsigned char>, "");
+static_assert(isAlsoFixedSize<signed short>, "");
+static_assert(isAlsoFixedSize<unsigned short>, "");
+static_assert(isAlsoFixedSize<signed int>, "");
+static_assert(isAlsoFixedSize<unsigned int>, "");
+static_assert(isAlsoFixedSize<signed long int>, "");
+static_assert(isAlsoFixedSize<unsigned long int>, "");
 
-GET(getSizeValue, std::size_t, std::size_t, v)
-GET(getStringValue, std::string, char const *, v)
-GET(getStringValue, std::string, std::string const &, v)
-GET(getStringValue, std::string, std::string &&, std::move(v))
+template <typename T>
+auto Configuration::value() const
+        -> typename std::enable_if<isReadableValueType<T>, T>::type
+{ return ValueHandler<T>::parse(interpolate(m_ptree->data())); }
 
-boost::property_tree::ptree const & Configuration::findChild(Path const & path_)
-        const
+template <typename T>
+auto Configuration::get(Path const & path_) const
+        -> typename std::enable_if<isReadableValueType<T>, T>::type
+{ return ValueHandler<T>::parse(interpolate(findChild(m_ptree, path_).data()));}
+
+template <typename T>
+auto Configuration::get(Path const & path_,
+                        DefaultValueType<T> defaultValue) const
+        -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto r(m_ptree);
+    boost::property_tree::ptree const * child = m_ptree;
     try {
-        for (auto const & component : path_.components())
-            r = std::addressof(r->get_child(component));
+        child = &findChild(m_ptree, path_);
     } catch (...) {
-        std::throw_with_nested(PathNotFoundException());
+        return ValueHandler<T>::generateDefault(defaultValue);
     }
-    return *r;
+    return ValueHandler<T>::parse(interpolate(child->data()));
 }
 
-template std::string Configuration::value<std::string>() const;
-template std::size_t Configuration::value<std::size_t>() const;
-
-template std::string Configuration::get<std::string>(Path const &) const;
-template std::size_t Configuration::get<std::size_t>(Path const &) const;
-
-template std::string Configuration::parseValue<std::string>(
-        boost::property_tree::ptree const &) const;
-template std::size_t Configuration::parseValue<std::size_t>(
-        boost::property_tree::ptree const &) const;
+#define DEFINE_GETTERS(T) \
+    template T Configuration::value<T>() const; \
+    template T Configuration::get<T>(Path const &) const; \
+    template T Configuration::get<T>(Path const &, DefaultValueType<T>) const
+DEFINE_GETTERS(std::string);
+DEFINE_GETTERS(std::int8_t);
+DEFINE_GETTERS(std::int16_t);
+DEFINE_GETTERS(std::int32_t);
+DEFINE_GETTERS(std::int64_t);
+DEFINE_GETTERS(std::uint8_t);
+DEFINE_GETTERS(std::uint16_t);
+DEFINE_GETTERS(std::uint32_t);
+DEFINE_GETTERS(std::uint64_t);
+DEFINE_GETTERS(float);
+DEFINE_GETTERS(double);
+DEFINE_GETTERS(long double);
+#undef DEFINE_GETTERS
 
 } /* namespace sharemind { */

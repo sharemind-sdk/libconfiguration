@@ -23,8 +23,10 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <ctime>
+#include <cstdint>
 #include <exception>
 #include <memory>
+#include <sharemind/comma.h>
 #include <sharemind/Exception.h>
 #include <sharemind/ExceptionMacros.h>
 #include <sharemind/StringView.h>
@@ -45,10 +47,6 @@ class Configuration {
 private: /* Types: */
 
     struct Inner;
-
-    template <typename T>
-    using Translator =
-        typename boost::property_tree::translator_between<std::string, T>::type;
 
     #define SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE(C,c) \
         class C ## IteratorTransformer { \
@@ -76,6 +74,29 @@ private: /* Types: */
     #undef SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE
 
 public: /* Types: */
+
+    template <typename T>
+    static constexpr bool const isReadableValueType =
+            std::is_same<T, std::string>::value
+            || std::is_same<T, std::int8_t>::value
+            || std::is_same<T, std::int16_t>::value
+            || std::is_same<T, std::int32_t>::value
+            || std::is_same<T, std::int64_t>::value
+            || std::is_same<T, std::uint8_t>::value
+            || std::is_same<T, std::uint16_t>::value
+            || std::is_same<T, std::uint32_t>::value
+            || std::is_same<T, std::uint64_t>::value
+            || std::is_same<T, float>::value
+            || std::is_same<T, double>::value
+            || std::is_same<T, long double>::value;
+
+    template <typename T>
+    using DefaultValueType =
+        typename std::conditional<
+            std::is_same<T, std::string>::value,
+            StringView,
+            T
+        >::type;
 
     using SizeType = boost::property_tree::ptree::size_type;
 
@@ -213,53 +234,16 @@ public: /* Methods: */
     ConstIterator cend() const noexcept;
 
     template <typename T>
-    T value() const { return parseValue<T>(*m_ptree); }
+    auto value() const
+            -> typename std::enable_if<isReadableValueType<T>, T>::type;
 
     template <typename T>
-    T get(Path const & path_) const { return parseValue<T>(findChild(path_)); }
+    auto get(Path const & path_) const
+            -> typename std::enable_if<isReadableValueType<T>, T>::type;
 
-    template <typename T, typename Default>
-    typename std::enable_if<std::is_same<typename std::remove_cv<T>::type,
-                                         std::size_t>::value,
-                            T>::type
-    get(Path const & path, Default && defaultValue) const
-    { return getSizeValue(path, std::forward<Default>(defaultValue)); }
-
-    template <typename T, typename ... Args>
-    typename std::enable_if<
-            std::is_same<T, std::string>::value
-            && (sizeof...(Args) == 1u)
-            && (TemplateContainsType<
-                        typename std::decay<TemplateFirstType<Args...> >::type,
-                        char const *,
-                        char *,
-                        std::string>::value),
-            T>::type
-    get(Path const & path, Args && ... defaultValueArgs) const
-    { return getStringValue(path, std::forward<Args>(defaultValueArgs)...); }
-
-    template <typename T, typename ... Args>
-    typename std::enable_if<
-            (sizeof...(Args) > 0u)
-            && !std::is_same<typename std::remove_cv<T>::type,
-                             std::size_t>::value
-            && !(std::is_same<T, std::string>::value
-                 && (sizeof...(Args) == 1u)
-                 && (TemplateContainsType<
-                         typename std::decay<TemplateFirstType<Args...> >::type,
-                         char const *,
-                         char *,
-                         std::string>::value)),
-            T>::type
-    get(Path const & path_, Args && ... defaultValueArgs) const {
-        boost::property_tree::ptree const * child = m_ptree;
-        try {
-            child = &findChild(path_);
-        } catch (...) {
-            return T(std::forward<Args>(defaultValueArgs)...);
-        }
-        return parseValue<T>(*child);
-    }
+    template <typename T>
+    auto get(Path const & path_, DefaultValueType<T> defaultValue) const
+            -> typename std::enable_if<isReadableValueType<T>, T>::type;
 
     void erase(Path const & path) noexcept;
 
@@ -278,24 +262,6 @@ private: /* Methods: */
                   std::shared_ptr<Inner> inner,
                   boost::property_tree::ptree & ptree) noexcept;
 
-    std::size_t getSizeValue(Path const &, std::size_t) const;
-    std::string getStringValue(Path const &, char const *) const;
-    std::string getStringValue(Path const &, std::string const &) const;
-    std::string getStringValue(Path const &, std::string && v) const;
-
-    boost::property_tree::ptree const & findChild(Path const & path_) const;
-
-    template <typename T>
-    T parseValue(boost::property_tree::ptree const & ptree) const {
-        try {
-            if (auto const optionalValue =
-                        Translator<T>().get_value(interpolate(ptree.data())))
-                return *optionalValue;
-            throw FailedToParseValueException();
-        } catch (...) {
-            std::throw_with_nested(FailedToParseValueException());
-        }
-    }
 private: /* Fields: */
 
     std::shared_ptr<Path const> m_path;
@@ -304,18 +270,23 @@ private: /* Fields: */
 
 };
 
-extern template std::string Configuration::value<std::string>() const;
-extern template std::size_t Configuration::value<std::size_t>() const;
-
-extern template std::string Configuration::get<std::string>(
-        Path const &) const;
-extern template std::size_t Configuration::get<std::size_t>(
-        Path const &) const;
-
-extern template std::string Configuration::parseValue<std::string>(
-        boost::property_tree::ptree const &) const;
-extern template std::size_t Configuration::parseValue<std::size_t>(
-        boost::property_tree::ptree const &) const;
+#define SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(T) \
+    extern template T Configuration::value<T>() const; \
+    extern template T Configuration::get<T>(Path const &) const; \
+    extern template T Configuration::get<T>(Path const &, DefaultValueType<T>) const
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::string);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::int8_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::int16_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::int32_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::int64_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::uint8_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::uint16_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::uint32_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(std::uint64_t);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(float);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(double);
+SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_(long double);
+#undef SHAREMIND_LIBCONFIGURATION_CONFIGURATION_H_
 
 } /* namespace sharemind { */
 
