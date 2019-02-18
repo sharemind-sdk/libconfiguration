@@ -19,15 +19,20 @@
 
 #include "Configuration.h"
 
+#include <algorithm>
 #include <array>
 #include <boost/iostreams/stream.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <cassert>
 #include <fcntl.h>
+#include <glob.h>
 #include <limits>
 #include <new>
+#include <set>
 #include <sharemind/Concat.h>
+#include <sharemind/Optional.h>
+#include <sharemind/StringView.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
 #include <sys/stat.h>
@@ -37,6 +42,8 @@
 
 
 namespace sharemind {
+
+using namespace StringViewLiterals;
 
 namespace {
 
@@ -68,6 +75,20 @@ constexpr inline auto capMaxToSizeT(T v)
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+struct FileId {
+    decltype(::stat::st_dev) deviceId;
+    decltype(::stat::st_ino) inode;
+};
+
+inline constexpr bool operator<(FileId const & lhs, FileId const & rhs) noexcept
+{
+    if (lhs.deviceId < rhs.deviceId)
+        return true;
+    if (rhs.deviceId < lhs.deviceId)
+        return false;
+    return lhs.inode < rhs.inode;
+};
 
 class PosixFileInputSource {
 
@@ -110,11 +131,256 @@ public: /* Methods: */
         throw std::system_error(errno, std::system_category());
     }
 
+    FileId fileId() const {
+        struct ::stat fileStat;
+        if (auto const r = ::fstat(*m_fd, &fileStat))
+            throw std::system_error(errno, std::system_category());
+        FileId r;
+        r.deviceId = fileStat.st_dev;
+        r.inode = fileStat.st_ino;
+        return r;
+    }
+
 private: /* Fields: */
 
     std::shared_ptr<int> m_fd;
 
 };
+
+struct TopLevelParseState;
+
+struct FileParseJob {
+    struct ParseState {
+        ParseState(std::string const & path)
+            : m_inFile(path)
+        {}
+
+        ParseState(ParseState &&) = delete;
+        ParseState(ParseState const &) = delete;
+
+        ParseState & operator=(ParseState &&) = delete;
+        ParseState & operator=(ParseState const &) = delete;
+
+        std::string parseFile(TopLevelParseState & tls,
+                              FileParseJob const & fpj);
+
+        PosixFileInputSource m_inFile;
+        boost::iostreams::stream<PosixFileInputSource> m_inStream{m_inFile};
+        std::size_t m_lineNumber = 1u;
+    };
+
+    FileParseJob(std::string path)
+        : m_path(std::move(path))
+    {}
+
+    FileParseJob(FileParseJob &&) = delete;
+    FileParseJob(FileParseJob const &) = delete;
+
+    FileParseJob & operator=(FileParseJob &&) = delete;
+    FileParseJob & operator=(FileParseJob const &) = delete;
+
+    std::string parseFile(TopLevelParseState & tls);
+
+    std::string prepareValue(StringView s) const;
+
+    std::string const m_path;
+    mutable Optional<std::string> m_escapedCurrentFileDirectory;
+    std::unique_ptr<FileParseJob> m_prev;
+    std::unique_ptr<ParseState> m_state;
+};
+
+
+std::string FileParseJob::prepareValue(StringView s) const {
+    // Helper to escape currentFileDirectory in a lazy fashion:
+    auto getEscapedCurrentFileDirectory =
+            [this]() -> std::string const & {
+                if (m_escapedCurrentFileDirectory.hasValue())
+                    return *m_escapedCurrentFileDirectory;
+                auto cfd(boost::filesystem::canonical(
+                             boost::filesystem::path(
+                                 m_path)).parent_path().string());
+                auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
+                if (it == cfd.cend())
+                    return m_escapedCurrentFileDirectory.emplace(
+                            std::move(cfd));
+
+                // Escape % signs and setup diversion:
+                auto & c = m_escapedCurrentFileDirectory.emplace();
+                c.reserve(cfd.size() + 1u);
+                c.assign(cfd.cbegin(), it);
+                c.push_back('%');
+                c.push_back('%');
+                while (++it != cfd.cend()) {
+                    if (*it == '%') {
+                        c.push_back('%');
+                        c.push_back('%');
+                    } else {
+                        c.push_back(*it);
+                    }
+                }
+                return c;
+            };
+
+    std::string r;
+    r.reserve(s.size());
+    for (auto escapePos = s.findFirstOf('%');
+         escapePos < s.size();
+         escapePos = s.findFirstOf('%', escapePos))
+    {
+        if (escapePos == s.size() - 1u)
+            throw Configuration::InterpolationSyntaxErrorException();
+        switch (s[escapePos + 1u]) {
+        case '%':
+        case 'C': case 'd': case 'D': case 'e': case 'F': case 'H':
+        case 'I': case 'j': case 'm': case 'M': case 'p': case 'R':
+        case 'S': case 'T': case 'u': case 'U': case 'V': case 'w':
+        case 'W': case 'y': case 'Y': case 'z': {
+            escapePos += 2u;
+            break;
+        }
+        case '{': {
+            auto const escapeStartPos = escapePos + 2u;
+            auto const escapeEndPos =
+                    s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
+            if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
+                throw Configuration::InterpolationSyntaxErrorException();
+            // Do the replacement:
+            if (s.substr(escapeStartPos, escapeEndPos - escapeStartPos)
+                == "CurrentFileDirectory"_sv)
+            {
+                r.append(s.data(), escapePos) // Everything before '%'
+                 .append(getEscapedCurrentFileDirectory());
+                s.removePrefix(escapeEndPos + 1u);
+                escapePos = 0u;
+            } else {
+                escapePos = escapeEndPos + 1u;
+            }
+            break;
+        }
+        default:
+            throw Configuration::InvalidInterpolationException();
+        }
+    }
+    return r.append(s.data(), s.size());
+}
+
+struct TopLevelParseState {
+
+    TopLevelParseState(boost::property_tree::ptree & ptree)
+        : m_result(ptree)
+    {}
+
+    void pushJob(std::string filename) {
+        auto fileParseJob(std::make_unique<FileParseJob>(std::move(filename)));
+        fileParseJob->m_prev = std::move(m_fileParseJob);
+        m_fileParseJob = std::move(fileParseJob);
+    }
+
+    void popJob() noexcept {
+        assert(m_fileParseJob);
+        m_fileParseJob =
+                decltype(m_fileParseJob)(std::move(m_fileParseJob->m_prev));
+    }
+
+    boost::property_tree::ptree & m_result;
+    boost::property_tree::ptree * m_currentSection = nullptr;
+    std::unique_ptr<FileParseJob> m_fileParseJob;
+    std::set<FileId> m_visitedFiles;
+};
+
+std::string FileParseJob::ParseState::parseFile(TopLevelParseState & tls,
+                                                FileParseJob const & fpj)
+{
+    constexpr static auto const whitespace = " \t\n\r"_sv;
+    std::string line;
+    for (; m_inStream.good(); ++m_lineNumber) {
+        std::getline(m_inStream, line);
+        if (!m_inStream.good() && !m_inStream.eof())
+            throw Configuration::FileReadException();
+
+        StringView lv(StringView(line).leftTrimmed(whitespace));
+
+        // Ignore empty lines and comments:
+        if (lv.empty() || lv.front() == ';')
+            continue;
+
+        if (lv.front() == '[') { // Parse section headers:
+            if (tls.m_currentSection && tls.m_currentSection->empty())
+                tls.m_result.pop_back(); // Drop previous section, if empty
+            auto const end(lv.find(']', 1u));
+            if ((end == StringView::npos)
+                || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
+                throw Configuration::InvalidSyntaxException();
+            auto keyStr(lv.substr(1, end - 1).trimmed(whitespace).str());
+            if (tls.m_result.find(keyStr) != tls.m_result.not_found())
+                throw Configuration::DuplicateSectionNameException();
+            tls.m_currentSection =
+                    &tls.m_result.push_back(
+                        std::make_pair(
+                            std::move(keyStr),
+                            boost::property_tree::ptree()))->second;
+        } else if (lv.front() == '@') { // Parse directives:
+            auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
+            StringView directive(lv.substr(1u, whitespacePos - 1u));
+            if (directive.empty())
+                throw Configuration::InvalidSyntaxException();
+            if (directive != "include")
+                throw Configuration::UnknownDirectiveException();
+            if (whitespacePos == StringView::npos)
+                throw Configuration::IncludeDirectiveMissingArgumentException();
+            auto arg(lv.substr(whitespacePos + 1u).trimmed(whitespace));
+            if (arg.empty())
+                throw Configuration::IncludeDirectiveMissingArgumentException();
+            return fpj.prepareValue(std::move(arg));
+        } else { // Parse key-value pairs:
+            auto const sepPos(lv.find('='));
+            if ((sepPos == std::string::npos) || (sepPos == 0u))
+                throw Configuration::InvalidSyntaxException();
+            auto const key(lv.substr(0u, sepPos).rightTrimmed(whitespace));
+            assert(!key.empty());
+            auto keyStr(key.str());
+
+            auto & container =
+                    tls.m_currentSection ? *tls.m_currentSection : tls.m_result;
+            if (container.find(keyStr) != container.not_found())
+                throw Configuration::DuplicateKeyException();
+
+            auto const data(lv.substr(sepPos + 1u).trimmed(whitespace));
+            container.push_back(
+                        std::make_pair(std::move(keyStr),
+                                       boost::property_tree::ptree(
+                                           fpj.prepareValue(data))));
+        }
+    }
+    // Drop last section, if it was empty:
+    if (tls.m_currentSection && tls.m_currentSection->empty())
+        tls.m_result.pop_back();
+    return std::string();
+}
+
+std::string FileParseJob::parseFile(TopLevelParseState & tls) {
+    if (!m_state) {
+        try {
+            m_state = std::make_unique<ParseState>(m_path);
+            auto fileId(m_state->m_inFile.fileId());
+            if (tls.m_visitedFiles.find(fileId) != tls.m_visitedFiles.end())
+                throw Configuration::IncludeLoopException();
+            tls.m_visitedFiles.emplace(std::move(fileId));
+        } catch (...) {
+            std::throw_with_nested(
+                        Configuration::FileOpenException(
+                            concat("Failed to open file \"", m_path, "\"!")));
+        }
+    }
+    try {
+        return m_state->parseFile(tls, *this);
+    } catch (...) {
+        std::throw_with_nested(
+                    Configuration::ParseException(
+                        concat("Failed to parse file \"", m_path, "\" (line ",
+                               m_state->m_lineNumber, ")!")));
+    }
+}
 
 } // anonymous namespace
 
@@ -195,16 +461,47 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     Inner & operator=(Inner &&) = delete;
     Inner & operator=(Inner const &) = delete;
 
-    void initFromPath(std::string const & path) {
-        PosixFileInputSource inFile(path);
-        boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
-        boost::property_tree::read_ini(inStream, m_ptree);
-        if (m_interpolation)
-            m_interpolation->addVariable(
-                    "CurrentFileDirectory",
-                    boost::filesystem::canonical(
-                        boost::filesystem::path(
-                                path)).parent_path().string());
+    void initFromPath(std::string path) {
+        TopLevelParseState parser(m_ptree);
+        parser.pushJob(std::move(path));
+
+        for (;;) {
+            assert(parser.m_fileParseJob);
+            auto & fps = *parser.m_fileParseJob;
+            auto globStr(fps.parseFile(parser));
+            if (globStr.empty()) {
+                parser.popJob();
+                if (!parser.m_fileParseJob)
+                    break;
+            } else {
+                ::glob_t globResults;
+                auto const r =
+                        ::glob(globStr.c_str(),
+                               GLOB_ERR | GLOB_NOCHECK | GLOB_NOSORT,
+                               nullptr,
+                               &globResults);
+                if (r != 0) {
+                    if (r == GLOB_NOSPACE)
+                        throw std::bad_alloc();
+                    throw GlobException();
+                }
+                try {
+                    // We do our own LC_COLLATE-unaware sorting of glob paths:
+                    std::vector<std::string> includes;
+                    includes.reserve(globResults.gl_pathc);
+                    for (auto i = globResults.gl_pathc; i > 0u; --i)
+                        includes.emplace_back(globResults.gl_pathv[i - 1u]);
+                    std::sort(includes.begin(), includes.end());
+                    for (auto include : includes)
+                        parser.pushJob(std::move(include));
+                } catch (...) {
+                    ::globfree(&globResults);
+                    throw;
+                }
+                ::globfree(&globResults);
+            }
+        }
+
         m_filename = path;
     }
 
@@ -318,6 +615,52 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         FailedToParseValueException,
         "Failed to parse value in configuration");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        GlobException,
+        "glob() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        IncludeLoopException,
+        "Include loop found: opened file already being parsed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(Exception,
+                                                    Configuration::,
+                                                    ParseException);
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(Exception,
+                                                    Configuration::,
+                                                    FileOpenException);
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        FileReadException,
+        "Failed to read from file!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        InvalidSyntaxException,
+        "Invalid syntax!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        DuplicateSectionNameException,
+        "Duplicate section name given!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        DuplicateKeyException,
+        "Duplicate key given!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        UnknownDirectiveException,
+        "Unknown directive!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::,
+        IncludeDirectiveMissingArgumentException,
+        "Missing argument to @include directive!");
 
 Configuration::Interpolation::Interpolation()
     : m_time(Configuration::getLocalTimeTm())

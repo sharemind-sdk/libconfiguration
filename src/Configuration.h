@@ -108,6 +108,30 @@ public: /* Types: */
                                                    PathNotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
                                                    FailedToParseValueException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception, GlobException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   IncludeLoopException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(Exception,
+                                                         FileOpenException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(Exception,
+                                                         ParseException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                   FileReadException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            Exception,
+            InvalidSyntaxException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            Exception,
+            DuplicateSectionNameException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            Exception,
+            DuplicateKeyException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            Exception,
+            UnknownDirectiveException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+            Exception,
+            IncludeDirectiveMissingArgumentException);
 
     using Iterator =
             boost::transform_iterator<

@@ -32,7 +32,7 @@ SET(Boost_USE_STATIC_RUNTIME OFF)
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
 FIND_PACKAGE(Boost COMPONENTS filesystem REQUIRED)
-FIND_PACKAGE(SharemindCxxHeaders 0.4.0 REQUIRED)
+FIND_PACKAGE(SharemindCxxHeaders 0.7.0 REQUIRED)
 
 
 # Headers:
@@ -125,7 +125,7 @@ SharemindAddComponentPackage("dev"
     DEB_SECTION "libdevel"
     DEB_DEPENDS
         "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
-        "libsharemind-cxxheaders-dev (>= 0.4.0)"
+        "libsharemind-cxxheaders-dev (>= 0.7.0)"
         "libboost-dev (>= 1.50)"
         "libc6-dev (>= 2.19)"
         "libstdc++-dev"
