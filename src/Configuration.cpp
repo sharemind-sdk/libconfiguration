@@ -439,12 +439,12 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         throw NoValidConfigurationFileFound(errorMessage);
     }
 
-    Inner(std::string const & filename,
+    Inner(StringView filename,
           std::shared_ptr<Interpolation> interpolation)
         : m_interpolation(std::move(interpolation))
     {
         try {
-            initFromPath(filename);
+            initFromPath(filename.str());
         } catch (...) {
             std::throw_with_nested(
                         FailedToOpenAndParseConfigurationException(
@@ -749,7 +749,7 @@ Configuration::Configuration(Configuration const & copy)
     , m_ptree(&m_inner->m_ptree)
 {}
 
-Configuration::Configuration(std::string const & filename)
+Configuration::Configuration(StringView filename)
     : Configuration(filename, std::make_shared<Interpolation>())
 {}
 
@@ -757,7 +757,7 @@ Configuration::Configuration(std::vector<std::string> const & tryPaths)
     : Configuration(tryPaths, std::make_shared<Interpolation>())
 {}
 
-Configuration::Configuration(std::string const & filename,
+Configuration::Configuration(StringView filename,
                              std::shared_ptr<Interpolation> interpolation)
     : m_inner(std::make_shared<Inner>(filename, std::move(interpolation)))
     , m_ptree(&m_inner->m_ptree)

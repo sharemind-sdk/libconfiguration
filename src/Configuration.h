@@ -172,11 +172,11 @@ public: /* Methods: */
     Configuration(Configuration && move) noexcept;
     Configuration(Configuration const & copy);
 
-    Configuration(std::string const & filename);
+    Configuration(StringView filename);
 
     Configuration(std::vector<std::string> const & tryPaths);
 
-    Configuration(std::string const & filename,
+    Configuration(StringView filename,
                   std::shared_ptr<Interpolation> interpolation);
 
     Configuration(std::vector<std::string> const & tryPaths,
