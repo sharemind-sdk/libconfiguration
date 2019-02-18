@@ -462,7 +462,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
     void initFromPath(std::string path) {
         TopLevelParseState parser(m_ptree);
-        parser.pushJob(std::move(path));
+        parser.pushJob(path);
 
         for (;;) {
             assert(parser.m_fileParseJob);
@@ -501,7 +501,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
             }
         }
 
-        m_filename = path;
+        m_filename = std::move(path);
     }
 
 /* Fields: */
