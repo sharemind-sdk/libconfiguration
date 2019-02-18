@@ -123,8 +123,8 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 /* Methods: */
 
     Inner(std::vector<std::string> const & tryPaths,
-          std::shared_ptr<Interpolation> interpolation_)
-        : interpolation(std::move(interpolation_))
+          std::shared_ptr<Interpolation> interpolation)
+        : m_interpolation(std::move(interpolation))
     {
         if (tryPaths.empty())
             throw NoTryPathsGivenException();
@@ -175,8 +175,8 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     }
 
     Inner(std::string const & filename_,
-          std::shared_ptr<Interpolation> interpolation_)
-        : interpolation(std::move(interpolation_))
+          std::shared_ptr<Interpolation> interpolation)
+        : m_interpolation(std::move(interpolation))
     {
         try {
             initFromPath(filename_);
@@ -198,21 +198,21 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     void initFromPath(std::string const & path) {
         PosixFileInputSource inFile(path);
         boost::iostreams::stream<PosixFileInputSource> inStream(inFile);
-        boost::property_tree::read_ini(inStream, ptree);
-        if (interpolation)
-            interpolation->addVariable(
+        boost::property_tree::read_ini(inStream, m_ptree);
+        if (m_interpolation)
+            m_interpolation->addVariable(
                     "CurrentFileDirectory",
                     boost::filesystem::canonical(
                         boost::filesystem::path(
                                 path)).parent_path().string());
-        filename = path;
+        m_filename = path;
     }
 
 /* Fields: */
 
-    std::shared_ptr<Interpolation> interpolation;
-    boost::property_tree::ptree ptree;
-    std::string filename;
+    std::shared_ptr<Interpolation> m_interpolation;
+    std::string m_filename;
+    boost::property_tree::ptree m_ptree;
 
 };
 
@@ -415,7 +415,7 @@ Configuration::Configuration(Configuration && move) noexcept = default;
 Configuration::Configuration(Configuration const & copy)
     : m_path(!copy.m_path ? nullptr : throw NonRootCopyException())
     , m_inner(std::make_shared<Inner>(*copy.m_inner))
-    , m_ptree(&m_inner->ptree)
+    , m_ptree(&m_inner->m_ptree)
 {}
 
 Configuration::Configuration(std::string const & filename)
@@ -429,13 +429,13 @@ Configuration::Configuration(std::vector<std::string> const & tryPaths)
 Configuration::Configuration(std::string const & filename,
                              std::shared_ptr<Interpolation> interpolation)
     : m_inner(std::make_shared<Inner>(filename, std::move(interpolation)))
-    , m_ptree(&m_inner->ptree)
+    , m_ptree(&m_inner->m_ptree)
 {}
 
 Configuration::Configuration(std::vector<std::string> const & tryPaths,
                              std::shared_ptr<Interpolation> interpolation)
     : m_inner(std::make_shared<Inner>(tryPaths, std::move(interpolation)))
-    , m_ptree(&m_inner->ptree)
+    , m_ptree(&m_inner->m_ptree)
 {}
 
 Configuration::Configuration(std::shared_ptr<Path const> path,
@@ -458,29 +458,29 @@ Configuration & Configuration::operator=(Configuration const & copy) {
 
     m_inner = std::make_shared<Inner>(*copy.m_inner);
     m_path.reset();
-    m_ptree = &m_inner->ptree;
+    m_ptree = &m_inner->m_ptree;
     return *this;
 }
 
 std::shared_ptr<Configuration::Interpolation> const &
 Configuration::interpolation() const noexcept
-{ return m_inner->interpolation; }
+{ return m_inner->m_interpolation; }
 
 void Configuration::setInterpolation(std::shared_ptr<Interpolation> i) noexcept
-{ m_inner->interpolation = std::move(i); }
+{ m_inner->m_interpolation = std::move(i); }
 
 void Configuration::loadInterpolationOverridesFromSection(
         std::string const & sectionName)
 {
-    if (!m_inner->interpolation)
-        m_inner->interpolation = std::make_shared<Interpolation>();
-    if (auto const section = m_inner->ptree.get_child_optional(sectionName))
+    if (!m_inner->m_interpolation)
+        m_inner->m_interpolation = std::make_shared<Interpolation>();
+    if (auto const section = m_inner->m_ptree.get_child_optional(sectionName))
         for (auto const & vp : *section)
-            m_inner->interpolation->addVariable(vp.first, vp.second.data());
+            m_inner->m_interpolation->addVariable(vp.first, vp.second.data());
 }
 
 std::string const & Configuration::filename() const noexcept
-{ return m_inner->filename; }
+{ return m_inner->m_filename; }
 
 std::string const & Configuration::key() const noexcept {
     static std::string const emptyKey;
@@ -531,16 +531,16 @@ void Configuration::erase(Path const & path) noexcept {
 }
 
 std::string Configuration::interpolate(std::string const & value) const {
-    return m_inner->interpolation
-           ? m_inner->interpolation->interpolate(value)
+    return m_inner->m_interpolation
+           ? m_inner->m_interpolation->interpolate(value)
            : value;
 }
 
 std::string Configuration::interpolate(std::string const & value,
                                        ::tm const & theTime) const
 {
-    return m_inner->interpolation
-           ? m_inner->interpolation->interpolate(value, theTime)
+    return m_inner->m_interpolation
+           ? m_inner->m_interpolation->interpolate(value, theTime)
            : value;
 }
 
