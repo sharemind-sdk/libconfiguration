@@ -32,6 +32,7 @@
 #include <set>
 #include <sharemind/Concat.h>
 #include <sharemind/Optional.h>
+#include <sharemind/ReversedRange.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
 #include <sys/stat.h>
@@ -522,12 +523,10 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
                 }
                 try {
                     // We do our own LC_COLLATE-unaware sorting of glob paths:
-                    std::vector<std::string> includes;
-                    includes.reserve(globResults.gl_pathc);
+                    std::set<std::string> includes;
                     for (auto i = globResults.gl_pathc; i > 0u; --i)
-                        includes.emplace_back(globResults.gl_pathv[i - 1u]);
-                    std::sort(includes.begin(), includes.end());
-                    for (auto include : includes)
+                        includes.emplace(globResults.gl_pathv[i - 1u]);
+                    for (auto include : reverseRange(includes))
                         parser.pushJob(std::move(include));
                 } catch (...) {
                     ::globfree(&globResults);
