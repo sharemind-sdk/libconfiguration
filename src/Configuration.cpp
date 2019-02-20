@@ -31,6 +31,7 @@
 #include <map>
 #include <new>
 #include <set>
+#include <sharemind/AssertReturn.h>
 #include <sharemind/Concat.h>
 #include <sharemind/Optional.h>
 #include <sharemind/ReversedRange.h>
@@ -95,15 +96,17 @@ struct ValueItem {
         }
     }
 
-    template <typename Ptree>
-    static ValueItem const & fromPtree(Ptree const & ptree) noexcept {
-        assert(ptree.data());
-        return *static_cast<ValueItem const *>(ptree.data().get());
-    }
-
     std::string const m_value;
     ConfigurationFileContextInfo const m_context;
 };
+
+inline ValueItem const & getValueItem(std::shared_ptr<void const> const & ptr)
+        noexcept
+{ return *static_cast<ValueItem const *>(assertReturn(ptr).get()); }
+
+template <typename Ptree>
+inline ValueItem const & getValueItem(Ptree const & ptree) noexcept
+{ return getValueItem(ptree.data()); }
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -429,7 +432,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             if (it != container.not_found()) {
                 auto & valuePtr = it->second.data();
                 if (valuePtr) {
-                    auto const & v = ValueItem::fromPtree(it->second);
+                    auto const & v = getValueItem(valuePtr);
                     throw Configuration::DuplicateKeyException(
                             concat("Duplicate key \"", std::move(keyStr),
                                    "\"! Previous declaration was in \"",
@@ -956,7 +959,7 @@ void Configuration::loadInterpolationOverridesFromSection(
         for (auto const & vp : *section)
             m_inner->m_interpolation->addVariable(
                         vp.first,
-                        ValueItem::fromPtree(vp.second).m_value);
+                        getValueItem(vp.second).m_value);
 }
 
 std::string const & Configuration::filename() const noexcept
@@ -1058,7 +1061,7 @@ template <typename T>
 auto Configuration::value() const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & v = ValueItem::fromPtree(*m_ptree);
+    auto const & v = getValueItem(*m_ptree);
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
                 ? v.interpolated(*m_inner->m_interpolation)
@@ -1069,7 +1072,7 @@ template <typename T>
 auto Configuration::get(Path const & path_) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & v = ValueItem::fromPtree(findChild(m_ptree, path_));
+    auto const & v = getValueItem(findChild(m_ptree, path_));
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
                 ? v.interpolated(*m_inner->m_interpolation)
@@ -1087,7 +1090,7 @@ auto Configuration::get(Path const & path_,
     } catch (...) {
         return ValueHandler<T>::generateDefault(defaultValue);
     }
-    auto const & v = ValueItem::fromPtree(*child);
+    auto const & v = getValueItem(*child);
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
                 ? v.interpolated(*m_inner->m_interpolation)
