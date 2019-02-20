@@ -192,24 +192,21 @@ struct FileParseJob {
                          m_path)).parent_path().string());
         auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
         if (it == cfd.cend())
-            return m_escapedCurrentFileDirectory.emplace(
-                    std::move(cfd));
+            return m_escapedCurrentFileDirectory.emplace(std::move(cfd));
 
         // Escape % signs and setup diversion:
         auto & c = m_escapedCurrentFileDirectory.emplace();
         c.reserve(cfd.size() + 1u);
-        c.assign(cfd.cbegin(), it);
-        c.push_back('%');
-        c.push_back('%');
-        while (++it != cfd.cend()) {
-            if (*it == '%') {
-                c.push_back('%');
-                c.push_back('%');
-            } else {
-                c.push_back(*it);
-            }
+        for (auto startIt = cfd.cbegin();;) {
+             c.append(startIt, ++it);
+             c.push_back('%');
+             startIt = it;
+             it = std::find(startIt, cfd.cend(), '%');
+             if (it == cfd.cend()) {
+                 c.append(startIt, it);
+                 return c;
+             }
         }
-        return c;
     }
 
     std::string const m_path;
