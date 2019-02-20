@@ -509,6 +509,11 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
                 if (!parser.m_fileParseJob)
                     break;
             } else {
+                if (globStr.front() != '/') {
+                    globStr = fps.getEscapedCurrentFileDirectory() + '/'
+                              + globStr;
+                    assert(globStr.front() == '/');
+                }
                 ::glob_t globResults;
                 auto const r =
                         ::glob(globStr.c_str(),
