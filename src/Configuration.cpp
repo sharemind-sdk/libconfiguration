@@ -147,6 +147,7 @@ private: /* Fields: */
 
 };
 
+template <typename Ptree>
 struct TopLevelParseState;
 
 struct FileParseJob {
@@ -161,7 +162,8 @@ struct FileParseJob {
         ParseState & operator=(ParseState &&) = delete;
         ParseState & operator=(ParseState const &) = delete;
 
-        std::string parseFile(TopLevelParseState & tls,
+        template <typename Ptree>
+        std::string parseFile(TopLevelParseState<Ptree> & tls,
                               FileParseJob const & fpj);
 
         PosixFileInputSource m_inFile;
@@ -179,7 +181,8 @@ struct FileParseJob {
     FileParseJob & operator=(FileParseJob &&) = delete;
     FileParseJob & operator=(FileParseJob const &) = delete;
 
-    std::string parseFile(TopLevelParseState & tls);
+    template <typename Ptree>
+    std::string parseFile(TopLevelParseState<Ptree> & tls);
 
     std::string prepareValue(StringView s) const;
 
@@ -260,9 +263,10 @@ std::string FileParseJob::prepareValue(StringView s) const {
     return r.append(s.data(), s.size());
 }
 
+template <typename Ptree>
 struct TopLevelParseState {
 
-    TopLevelParseState(boost::property_tree::ptree & ptree)
+    TopLevelParseState(Ptree & ptree)
         : m_result(ptree)
     {}
 
@@ -278,13 +282,14 @@ struct TopLevelParseState {
                 decltype(m_fileParseJob)(std::move(m_fileParseJob->m_prev));
     }
 
-    boost::property_tree::ptree & m_result;
-    boost::property_tree::ptree * m_currentSection = nullptr;
+    Ptree & m_result;
+    Ptree * m_currentSection = nullptr;
     std::unique_ptr<FileParseJob> m_fileParseJob;
     std::set<FileId> m_visitedFiles;
 };
 
-std::string FileParseJob::ParseState::parseFile(TopLevelParseState & tls,
+template <typename Ptree>
+std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                                                 FileParseJob const & fpj)
 {
     constexpr static auto const whitespace = " \t\n\r"_sv;
@@ -312,9 +317,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState & tls,
                 throw Configuration::DuplicateSectionNameException();
             tls.m_currentSection =
                     &tls.m_result.push_back(
-                        std::make_pair(
-                            std::move(keyStr),
-                            boost::property_tree::ptree()))->second;
+                        std::make_pair(std::move(keyStr), Ptree()))->second;
         } else if (lv.front() == '@') { // Parse directives:
             auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
             StringView directive(lv.substr(1u, whitespacePos - 1u));
@@ -344,8 +347,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState & tls,
             auto const data(lv.substr(sepPos + 1u).trimmed(whitespace));
             container.push_back(
                         std::make_pair(std::move(keyStr),
-                                       boost::property_tree::ptree(
-                                           fpj.prepareValue(data))));
+                                       Ptree(fpj.prepareValue(data))));
         }
     }
     // Drop last section, if it was empty:
@@ -354,7 +356,8 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState & tls,
     return std::string();
 }
 
-std::string FileParseJob::parseFile(TopLevelParseState & tls) {
+template <typename Ptree>
+std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
     if (!m_state) {
         try {
             m_state = std::make_unique<ParseState>(m_path);
@@ -401,10 +404,8 @@ template <> struct ValueHandler<std::string> {
     static std::string generateDefault(StringView value) { return value.str(); }
 };
 
-boost::property_tree::ptree const & findChild(
-        boost::property_tree::ptree const * r,
-        Path const & path_)
-{
+template <typename Ptree>
+Ptree const & findChild(Ptree const * r, Path const & path_) {
     try {
         for (auto const & component : path_.components())
             r = std::addressof(r->get_child(component));
@@ -494,7 +495,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     Inner & operator=(Inner const &) = delete;
 
     void initFromPath(std::string path) {
-        TopLevelParseState parser(m_ptree);
+        TopLevelParseState<decltype(m_ptree)> parser(m_ptree);
         parser.pushJob(path);
 
         for (;;) {
