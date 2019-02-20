@@ -396,8 +396,17 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 
             auto & container =
                     tls.m_currentSection ? *tls.m_currentSection : tls.m_result;
-            if (container.find(keyStr) != container.not_found())
-                throw Configuration::DuplicateKeyException();
+            {
+                auto const it(container.find(keyStr));
+                if (it != container.not_found()) {
+                    auto const & v = ValueItem::fromPtree(it->second);
+                    throw Configuration::DuplicateKeyException(
+                            concat("Duplicate key \"", std::move(keyStr),
+                                   "\"! Previous declaration was in \"",
+                                   *v.m_filename, "\" on line ", v.m_lineNumber,
+                                   '.'));
+                }
+            }
 
             auto const data(lv.substr(sepPos + 1u).trimmed(whitespace));
 
@@ -713,11 +722,10 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         DuplicateSectionNameException,
         "Duplicate section name given!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
-        DuplicateKeyException,
-        "Duplicate key given!");
+        DuplicateKeyException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Exception,
         Configuration::,
