@@ -33,6 +33,7 @@
 #include <sharemind/Concat.h>
 #include <sharemind/Optional.h>
 #include <sharemind/ReversedRange.h>
+#include <sharemind/StrongType.h>
 #include <sharemind/visibility.h>
 #include <streambuf>
 #include <sys/stat.h>
@@ -46,6 +47,14 @@ namespace sharemind {
 using namespace StringViewLiterals;
 
 namespace {
+
+using LineNumber =
+        StrongType<
+            std::size_t,
+            struct LineNumberTag,
+            StrongTypePreIncrementable,
+            StrongTypeStreamable
+        >;
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -168,7 +177,7 @@ struct FileParseJob {
 
         PosixFileInputSource m_inFile;
         boost::iostreams::stream<PosixFileInputSource> m_inStream{m_inFile};
-        std::size_t m_lineNumber = 1u;
+        LineNumber m_lineNumber{1u};
     };
 
     FileParseJob(std::string path)
