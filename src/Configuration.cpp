@@ -224,7 +224,7 @@ struct FileParseJob {
     std::string const m_path;
     mutable Optional<std::string> m_escapedCurrentFileDirectory;
     std::unique_ptr<FileParseJob> m_prev;
-    std::unique_ptr<ParseState> m_state;
+    Optional<ParseState> m_state;
 };
 
 
@@ -368,9 +368,9 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 
 template <typename Ptree>
 std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
-    if (!m_state) {
+    if (!m_state.hasValue()) {
         try {
-            m_state = std::make_unique<ParseState>(m_path);
+            m_state.emplace(m_path);
             auto fileId(m_state->m_inFile.fileId());
             if (tls.m_visitedFiles.find(fileId) != tls.m_visitedFiles.end())
                 throw Configuration::IncludeLoopException();
