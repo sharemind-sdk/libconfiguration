@@ -56,6 +56,51 @@ using LineNumber =
             StrongTypeStreamable
         >;
 
+struct ValueItem {
+
+    ValueItem(std::string value,
+              std::shared_ptr<boost::filesystem::path const> filename,
+              LineNumber lineNumber)
+            noexcept(std::is_nothrow_move_constructible<std::string>::value
+                     && std::is_nothrow_move_constructible<
+                            std::shared_ptr<std::string> >::value
+                     && std::is_nothrow_move_constructible<LineNumber>::value)
+        : m_value(std::move(value))
+        , m_filename(std::move(filename))
+        , m_lineNumber(std::move(lineNumber))
+    {}
+
+    ValueItem(ValueItem &&) = delete;
+    ValueItem(ValueItem const &) = delete;
+
+    ValueItem & operator=(ValueItem &&) = delete;
+    ValueItem & operator=(ValueItem const &) = delete;
+
+    std::string interpolated(Configuration::Interpolation const & interpolation)
+            const
+    {
+        try {
+            return interpolation.interpolate(m_value);
+        } catch (...) {
+            std::throw_with_nested(
+                    Configuration::InterpolationException(
+                        concat("Failed to interpolate configuration value from "
+                               "file \"", m_filename->string(),
+                               "\" line ", m_lineNumber)));
+        }
+    }
+
+    template <typename Ptree>
+    static ValueItem const & fromPtree(Ptree const & ptree) noexcept {
+        assert(ptree.data());
+        return *static_cast<ValueItem const *>(ptree.data().get());
+    }
+
+    std::string const m_value;
+    std::shared_ptr<boost::filesystem::path const> const m_filename;
+    LineNumber const m_lineNumber;
+};
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-template"
@@ -181,7 +226,9 @@ struct FileParseJob {
     };
 
     FileParseJob(std::string path)
-        : m_canonicalPath(boost::filesystem::canonical(std::move(path)))
+        : m_canonicalPath(
+              std::make_shared<boost::filesystem::path>(
+                  boost::filesystem::canonical(std::move(path))))
     {}
 
     FileParseJob(FileParseJob &&) = delete;
@@ -199,7 +246,7 @@ struct FileParseJob {
     std::string const & getEscapedCurrentFileDirectory() const {
         if (m_escapedCurrentFileDirectory.hasValue())
             return *m_escapedCurrentFileDirectory;
-        auto cfd(m_canonicalPath.parent_path().string());
+        auto cfd(m_canonicalPath->parent_path().string());
         auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
         if (it == cfd.cend())
             return m_escapedCurrentFileDirectory.emplace(std::move(cfd));
@@ -219,7 +266,7 @@ struct FileParseJob {
         }
     }
 
-    boost::filesystem::path const m_canonicalPath;
+    std::shared_ptr<boost::filesystem::path const> const m_canonicalPath;
     mutable Optional<std::string> m_escapedCurrentFileDirectory;
     std::unique_ptr<FileParseJob> m_prev;
     Optional<ParseState> m_state;
@@ -353,9 +400,13 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                 throw Configuration::DuplicateKeyException();
 
             auto const data(lv.substr(sepPos + 1u).trimmed(whitespace));
+
             container.push_back(
                         std::make_pair(std::move(keyStr),
-                                       Ptree(fpj.prepareValue(data))));
+                                       Ptree(std::make_shared<ValueItem>(
+                                                 fpj.prepareValue(data),
+                                                 fpj.m_canonicalPath,
+                                                 m_lineNumber))));
         }
     }
     // Drop last section, if it was empty:
@@ -368,7 +419,7 @@ template <typename Ptree>
 std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
     if (!m_state.hasValue()) {
         try {
-            m_state.emplace(m_canonicalPath);
+            m_state.emplace(*m_canonicalPath);
             auto fileId(m_state->m_inFile.fileId());
             if (tls.m_visitedFiles.find(fileId) != tls.m_visitedFiles.end())
                 throw Configuration::IncludeLoopException();
@@ -377,7 +428,7 @@ std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
             std::throw_with_nested(
                         Configuration::FileOpenException(
                             concat("Failed to open file \"",
-                                   m_canonicalPath.string(), "\"!")));
+                                   m_canonicalPath->string(), "\"!")));
         }
     }
     try {
@@ -386,7 +437,7 @@ std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
         std::throw_with_nested(
                     Configuration::ParseException(
                         concat("Failed to parse file \"",
-                               m_canonicalPath.string(), "\" (line ",
+                               m_canonicalPath->string(), "\" (line ",
                                m_state->m_lineNumber, ")!")));
     }
 }
@@ -614,6 +665,9 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
         NoValidConfigurationFileFound);
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(Exception,
+                                                    Configuration::,
+                                                    InterpolationException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
@@ -866,7 +920,9 @@ void Configuration::loadInterpolationOverridesFromSection(
         m_inner->m_interpolation = std::make_shared<Interpolation>();
     if (auto const section = m_inner->m_ptree.get_child_optional(sectionName))
         for (auto const & vp : *section)
-            m_inner->m_interpolation->addVariable(vp.first, vp.second.data());
+            m_inner->m_interpolation->addVariable(
+                        vp.first,
+                        ValueItem::fromPtree(vp.second).m_value);
 }
 
 std::string const & Configuration::filename() const noexcept
@@ -967,12 +1023,24 @@ static_assert(isAlsoFixedSize<unsigned long int>, "");
 template <typename T>
 auto Configuration::value() const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
-{ return ValueHandler<T>::parse(interpolate(m_ptree->data())); }
+{
+    auto const & v = ValueItem::fromPtree(*m_ptree);
+    return ValueHandler<T>::parse(
+                m_inner->m_interpolation
+                ? v.interpolated(*m_inner->m_interpolation)
+                : v.m_value);
+}
 
 template <typename T>
 auto Configuration::get(Path const & path_) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
-{ return ValueHandler<T>::parse(interpolate(findChild(m_ptree, path_).data()));}
+{
+    auto const & v = ValueItem::fromPtree(findChild(m_ptree, path_));
+    return ValueHandler<T>::parse(
+                m_inner->m_interpolation
+                ? v.interpolated(*m_inner->m_interpolation)
+                : v.m_value);
+}
 
 template <typename T>
 auto Configuration::get(Path const & path_,
@@ -985,7 +1053,11 @@ auto Configuration::get(Path const & path_,
     } catch (...) {
         return ValueHandler<T>::generateDefault(defaultValue);
     }
-    return ValueHandler<T>::parse(interpolate(child->data()));
+    auto const & v = ValueItem::fromPtree(*child);
+    return ValueHandler<T>::parse(
+                m_inner->m_interpolation
+                ? v.interpolated(*m_inner->m_interpolation)
+                : v.m_value);
 }
 
 #define DEFINE_GETTERS(T) \

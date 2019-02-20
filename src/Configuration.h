@@ -46,7 +46,11 @@ class Configuration {
 
 private: /* Types: */
 
-    using ptree = boost::property_tree::ptree;
+    using ptree =
+            boost::property_tree::basic_ptree<
+                std::string,
+                std::shared_ptr<void const>
+            >;
 
     struct Inner;
 
@@ -109,6 +113,9 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             NoValidConfigurationFileFound);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
+            Exception,
+            InterpolationException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             FailedToOpenAndParseConfigurationException);
