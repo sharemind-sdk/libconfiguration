@@ -708,7 +708,7 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         "Missing argument to @include directive!");
 
 Configuration::Interpolation::Interpolation()
-    : m_time(Configuration::getLocalTimeTm())
+    : m_time(getLocalTimeTm())
 {}
 
 Configuration::Interpolation::~Interpolation() noexcept {}
@@ -779,13 +779,24 @@ void Configuration::Interpolation::addVariable(std::string var,
 { m_map.emplace(std::move(var), std::move(value)); }
 
 void Configuration::Interpolation::resetTime()
-{ return resetTime(Configuration::getLocalTimeTm()); }
+{ return resetTime(getLocalTimeTm()); }
 
 void Configuration::Interpolation::resetTime(std::time_t theTime)
-{ return resetTime(Configuration::getLocalTimeTm(theTime)); }
+{ return resetTime(getLocalTimeTm(theTime)); }
 
 void Configuration::Interpolation::resetTime(::tm const & theTime)
 { m_time = theTime; }
+
+::tm Configuration::Interpolation::getLocalTimeTm() { return getLocalTimeTm(::time(nullptr)); }
+
+::tm Configuration::Interpolation::getLocalTimeTm(std::time_t const theTime) {
+    if (theTime == std::time_t(-1))
+        throw Configuration::TimeException();
+    ::tm theTimeTm;
+    if (!localtime_r(&theTime, &theTimeTm))
+        throw Configuration::LocalTimeException();
+    return theTimeTm;
+}
 
 Configuration::Configuration(Configuration && move) noexcept = default;
 
@@ -929,17 +940,6 @@ std::vector<std::string> Configuration::defaultSharemindToolTryPaths(
     std::vector<std::string> r(getXdgConfigPaths(suffix));
     r.emplace_back("/etc/" + std::move(suffix));
     return r;
-}
-
-::tm Configuration::getLocalTimeTm() { return getLocalTimeTm(::time(nullptr)); }
-
-::tm Configuration::getLocalTimeTm(std::time_t const theTime) {
-    if (theTime == std::time_t(-1))
-        throw TimeException();
-    ::tm theTimeTm;
-    if (!localtime_r(&theTime, &theTimeTm))
-        throw LocalTimeException();
-    return theTimeTm;
 }
 
 template <typename T>

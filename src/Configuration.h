@@ -179,6 +179,9 @@ public: /* Types: */
         void resetTime(std::time_t theTime);
         void resetTime(::tm const & theTime);
 
+        static ::tm getLocalTimeTm();
+        static ::tm getLocalTimeTm(std::time_t theTime);
+
     private: /* Fields: */
 
         std::unordered_map<std::string, std::string> m_map;
@@ -250,9 +253,6 @@ public: /* Methods: */
 
     static std::vector<std::string> defaultSharemindToolTryPaths(
             std::string const & configName);
-
-    static ::tm getLocalTimeTm();
-    static ::tm getLocalTimeTm(std::time_t theTime);
 
 private: /* Methods: */
 
