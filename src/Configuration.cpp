@@ -999,6 +999,11 @@ Path const & Configuration::path() const noexcept {
     return m_path ? *m_path : emptyPath;
 }
 
+bool Configuration::empty() const noexcept { return m_ptree->empty(); }
+
+Configuration::SizeType Configuration::size() const noexcept
+{ return m_ptree->size(); }
+
 Configuration::Iterator Configuration::begin() noexcept
 { return Iterator(m_ptree->begin(), *this); }
 

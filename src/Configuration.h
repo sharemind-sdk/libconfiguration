@@ -237,8 +237,8 @@ public: /* Methods: */
 
     Path const & path() const noexcept;
 
-    bool empty() const noexcept { return m_ptree->empty(); }
-    SizeType size() const noexcept { return m_ptree->size(); }
+    bool empty() const noexcept;
+    SizeType size() const noexcept;
 
     Iterator begin() noexcept;
     ConstIterator begin() const noexcept;
