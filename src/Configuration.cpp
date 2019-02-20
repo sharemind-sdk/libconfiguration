@@ -161,8 +161,8 @@ struct TopLevelParseState;
 
 struct FileParseJob {
     struct ParseState {
-        ParseState(std::string const & path)
-            : m_inFile(path)
+        ParseState(boost::filesystem::path const & path)
+            : m_inFile(path.string())
         {}
 
         ParseState(ParseState &&) = delete;
@@ -181,7 +181,7 @@ struct FileParseJob {
     };
 
     FileParseJob(std::string path)
-        : m_path(std::move(path))
+        : m_canonicalPath(boost::filesystem::canonical(std::move(path)))
     {}
 
     FileParseJob(FileParseJob &&) = delete;
@@ -199,9 +199,7 @@ struct FileParseJob {
     std::string const & getEscapedCurrentFileDirectory() const {
         if (m_escapedCurrentFileDirectory.hasValue())
             return *m_escapedCurrentFileDirectory;
-        auto cfd(boost::filesystem::canonical(
-                     boost::filesystem::path(
-                         m_path)).parent_path().string());
+        auto cfd(m_canonicalPath.parent_path().string());
         auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
         if (it == cfd.cend())
             return m_escapedCurrentFileDirectory.emplace(std::move(cfd));
@@ -221,7 +219,7 @@ struct FileParseJob {
         }
     }
 
-    std::string const m_path;
+    boost::filesystem::path const m_canonicalPath;
     mutable Optional<std::string> m_escapedCurrentFileDirectory;
     std::unique_ptr<FileParseJob> m_prev;
     Optional<ParseState> m_state;
@@ -370,7 +368,7 @@ template <typename Ptree>
 std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
     if (!m_state.hasValue()) {
         try {
-            m_state.emplace(m_path);
+            m_state.emplace(m_canonicalPath);
             auto fileId(m_state->m_inFile.fileId());
             if (tls.m_visitedFiles.find(fileId) != tls.m_visitedFiles.end())
                 throw Configuration::IncludeLoopException();
@@ -378,7 +376,8 @@ std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
         } catch (...) {
             std::throw_with_nested(
                         Configuration::FileOpenException(
-                            concat("Failed to open file \"", m_path, "\"!")));
+                            concat("Failed to open file \"",
+                                   m_canonicalPath.string(), "\"!")));
         }
     }
     try {
@@ -386,7 +385,8 @@ std::string FileParseJob::parseFile(TopLevelParseState<Ptree> & tls) {
     } catch (...) {
         std::throw_with_nested(
                     Configuration::ParseException(
-                        concat("Failed to parse file \"", m_path, "\" (line ",
+                        concat("Failed to parse file \"",
+                               m_canonicalPath.string(), "\" (line ",
                                m_state->m_lineNumber, ")!")));
     }
 }
