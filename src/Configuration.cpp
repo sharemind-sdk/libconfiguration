@@ -385,14 +385,18 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                                     ctx.m_lineNumber, '.'));
                 }
             }
-            assert(tls.m_result.find(keyStr) == tls.m_result.not_found());
             tls.m_sectionHeaderContexts.emplace(keyStr,
                                                 ConfigurationFileContextInfo{
                                                     fpj.m_canonicalPath,
                                                     m_lineNumber});
-            tls.m_currentSection =
-                    &tls.m_result.push_back(
-                        std::make_pair(std::move(keyStr), Ptree()))->second;
+            auto const sectionIt(tls.m_result.find(keyStr));
+            if (sectionIt == tls.m_result.not_found()) {
+                tls.m_currentSection =
+                        &tls.m_result.push_back(
+                            std::make_pair(std::move(keyStr), Ptree()))->second;
+            } else {
+                tls.m_currentSection = &sectionIt->second;
+            }
         } else if (lv.front() == '@') { // Parse directives:
             auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
             StringView directive(lv.substr(1u, whitespacePos - 1u));
