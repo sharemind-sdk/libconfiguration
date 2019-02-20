@@ -104,10 +104,6 @@ inline ValueItem const & getValueItem(std::shared_ptr<void const> const & ptr)
         noexcept
 { return *static_cast<ValueItem const *>(assertReturn(ptr).get()); }
 
-template <typename Ptree>
-inline ValueItem const & getValueItem(Ptree const & ptree) noexcept
-{ return getValueItem(ptree.data()); }
-
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-template"
@@ -515,6 +511,17 @@ Ptree const & findChild(Ptree const * r, Path const & path_) {
     return *r;
 }
 
+template <typename Ptree>
+ValueItem const & findValueItem(Ptree const & ptree) {
+    if (auto const & valuePtr = ptree.data())
+        return getValueItem(valuePtr);
+    throw Configuration::ValueNotFoundException();
+}
+
+template <typename Ptree>
+ValueItem const & findValueItem(Ptree const & ptree, Path const & path)
+{ return findValueItem(findChild(&ptree, path)); }
+
 } // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
@@ -711,11 +718,19 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
         FailedToOpenAndParseConfigurationException);
+SHAREMIND_DEFINE_EXCEPTION_NOINLINE(Exception,
+                                    Configuration::,
+                                    NotFoundException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        Exception,
+        NotFoundException,
         Configuration::,
         PathNotFoundException,
         "Path not found in configuration!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        NotFoundException,
+        Configuration::,
+        ValueNotFoundException,
+        "No value defined at the requested path!");
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Exception,
         Configuration::,
@@ -959,7 +974,7 @@ void Configuration::loadInterpolationOverridesFromSection(
         for (auto const & vp : *section)
             m_inner->m_interpolation->addVariable(
                         vp.first,
-                        getValueItem(vp.second).m_value);
+                        getValueItem(vp.second.data()).m_value);
 }
 
 std::string const & Configuration::filename() const noexcept
@@ -1061,22 +1076,22 @@ template <typename T>
 auto Configuration::value() const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & v = getValueItem(*m_ptree);
+    auto const & valueItem = findValueItem(*m_ptree);
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
-                ? v.interpolated(*m_inner->m_interpolation)
-                : v.m_value);
+                ? valueItem.interpolated(*m_inner->m_interpolation)
+                : valueItem.m_value);
 }
 
 template <typename T>
 auto Configuration::get(Path const & path_) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & v = getValueItem(findChild(m_ptree, path_));
+    auto const & valueItem = findValueItem(*m_ptree, path_);
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
-                ? v.interpolated(*m_inner->m_interpolation)
-                : v.m_value);
+                ? valueItem.interpolated(*m_inner->m_interpolation)
+                : valueItem.m_value);
 }
 
 template <typename T>
@@ -1084,17 +1099,16 @@ auto Configuration::get(Path const & path_,
                         DefaultValueType<T> defaultValue) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const * child = m_ptree;
+    ValueItem const * valueItem;
     try {
-        child = &findChild(m_ptree, path_);
-    } catch (...) {
+        valueItem = &findValueItem(*m_ptree, path_);
+    } catch (NotFoundException const &) {
         return ValueHandler<T>::generateDefault(defaultValue);
     }
-    auto const & v = getValueItem(*child);
     return ValueHandler<T>::parse(
                 m_inner->m_interpolation
-                ? v.interpolated(*m_inner->m_interpolation)
-                : v.m_value);
+                ? valueItem->interpolated(*m_inner->m_interpolation)
+                : valueItem->m_value);
 }
 
 #define DEFINE_GETTERS(T) \

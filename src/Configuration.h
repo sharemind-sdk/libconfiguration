@@ -119,8 +119,11 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             FailedToOpenAndParseConfigurationException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+    SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, NotFoundException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
                                                    PathNotFoundException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
+                                                   ValueNotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
                                                    FailedToParseValueException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception, GlobException);
