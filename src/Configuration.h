@@ -109,21 +109,6 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             NoValidConfigurationFileFound);
-    SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, InterpolationException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
-                                                   UnknownVariableException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
-            InterpolationException,
-            InterpolationSyntaxErrorException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
-            InterpolationException,
-            InvalidInterpolationException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
-                                                   TimeException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
-                                                   LocalTimeException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(InterpolationException,
-                                                   StrftimeException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             FailedToOpenAndParseConfigurationException);
@@ -164,6 +149,25 @@ public: /* Types: */
                                       ptree::const_iterator>;
 
     class Interpolation {
+
+    public: /* Types: */
+
+        SHAREMIND_DECLARE_EXCEPTION_NOINLINE(sharemind::Exception, Exception);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+                Exception,
+                UnknownVariableException);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+                Exception,
+                InterpolationSyntaxErrorException);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+                Exception,
+                InvalidInterpolationException);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                       TimeException);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                       LocalTimeException);
+        SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
+                                                       StrftimeException);
 
     public: /* Methods: */
 

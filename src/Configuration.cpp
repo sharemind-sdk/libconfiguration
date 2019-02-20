@@ -229,6 +229,7 @@ struct FileParseJob {
 
 
 std::string FileParseJob::prepareValue(StringView s) const {
+    using I = Configuration::Interpolation;
     std::string r;
     r.reserve(s.size());
     for (auto escapePos = s.findFirstOf('%');
@@ -236,7 +237,7 @@ std::string FileParseJob::prepareValue(StringView s) const {
          escapePos = s.findFirstOf('%', escapePos))
     {
         if (escapePos == s.size() - 1u)
-            throw Configuration::InterpolationSyntaxErrorException();
+            throw I::InterpolationSyntaxErrorException();
         switch (s[escapePos + 1u]) {
         case '%':
         case 'C': case 'd': case 'D': case 'e': case 'F': case 'H':
@@ -251,7 +252,7 @@ std::string FileParseJob::prepareValue(StringView s) const {
             auto const escapeEndPos =
                     s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
             if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
-                throw Configuration::InterpolationSyntaxErrorException();
+                throw I::InterpolationSyntaxErrorException();
             // Do the replacement:
             if (s.substr(escapeStartPos, escapeEndPos - escapeStartPos)
                 == "CurrentFileDirectory"_sv)
@@ -266,7 +267,7 @@ std::string FileParseJob::prepareValue(StringView s) const {
             break;
         }
         default:
-            throw Configuration::InvalidInterpolationException();
+            throw I::InvalidInterpolationException();
         }
     }
     return r.append(s.data(), s.size());
@@ -613,39 +614,6 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
         NoValidConfigurationFileFound);
-SHAREMIND_DEFINE_EXCEPTION_NOINLINE(Exception,
-                                    Configuration::,
-                                    InterpolationException);
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        UnknownVariableException,
-        "Unknown configuration interpolation variable!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        InterpolationSyntaxErrorException,
-        "Interpolation syntax error!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        InvalidInterpolationException,
-        "Invalid interpolation given!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        TimeException,
-        "time() failed!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        LocalTimeException,
-        "localtime_r() failed!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        InterpolationException,
-        Configuration::,
-        StrftimeException,
-        "strftime() failed!");
 SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
@@ -707,6 +675,40 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         IncludeDirectiveMissingArgumentException,
         "Missing argument to @include directive!");
 
+SHAREMIND_DEFINE_EXCEPTION_NOINLINE(sharemind::Exception,
+                                    Configuration::Interpolation::,
+                                    Exception);
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        UnknownVariableException,
+        "Unknown configuration interpolation variable!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        InterpolationSyntaxErrorException,
+        "Interpolation syntax error!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        InvalidInterpolationException,
+        "Invalid interpolation given!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        TimeException,
+        "time() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        LocalTimeException,
+        "localtime_r() failed!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        Exception,
+        Configuration::Interpolation::,
+        StrftimeException,
+        "strftime() failed!");
+
 Configuration::Interpolation::Interpolation()
     : m_time(getLocalTimeTm())
 {}
@@ -730,7 +732,7 @@ std::string Configuration::Interpolation::interpolate(StringView s,
          escapePos = s.findFirstOf('%', escapePos))
     {
         if (escapePos == s.size() - 1u)
-            throw Configuration::InterpolationSyntaxErrorException();
+            throw InterpolationSyntaxErrorException();
         auto const escapeChar = s[escapePos + 1u];
         switch (escapeChar) {
         case '%':
@@ -755,7 +757,7 @@ std::string Configuration::Interpolation::interpolate(StringView s,
             auto const escapeEndPos =
                     s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
             if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
-                throw Configuration::InterpolationSyntaxErrorException();
+                throw InterpolationSyntaxErrorException();
             auto const matchIt(
                         m_map.find(
                             s.substr(escapeStartPos,
@@ -791,10 +793,10 @@ void Configuration::Interpolation::resetTime(::tm const & theTime)
 
 ::tm Configuration::Interpolation::getLocalTimeTm(std::time_t const theTime) {
     if (theTime == std::time_t(-1))
-        throw Configuration::TimeException();
+        throw TimeException();
     ::tm theTimeTm;
     if (!localtime_r(&theTime, &theTimeTm))
-        throw Configuration::LocalTimeException();
+        throw LocalTimeException();
     return theTimeTm;
 }
 
