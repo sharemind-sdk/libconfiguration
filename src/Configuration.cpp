@@ -365,8 +365,6 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             continue;
 
         if (lv.front() == '[') { // Parse section headers:
-            if (tls.m_currentSection && tls.m_currentSection->empty())
-                tls.m_result.pop_back(); // Drop previous section, if empty
             auto const end(lv.find(']', 1u));
             if ((end == StringView::npos)
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
@@ -456,9 +454,6 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             }
         }
     }
-    // Drop last section, if it was empty:
-    if (tls.m_currentSection && tls.m_currentSection->empty())
-        tls.m_result.pop_back();
     return std::string();
 }
 
