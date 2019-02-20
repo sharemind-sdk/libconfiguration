@@ -708,7 +708,7 @@ Configuration::Interpolation::~Interpolation() noexcept {}
 
 std::string Configuration::Interpolation::interpolate(StringView s)
         const
-{ return interpolate(s, Configuration::getLocalTimeTm()); }
+{ return interpolate(s, m_time); }
 
 std::string Configuration::Interpolation::interpolate(StringView s,
                                                       ::tm const & theTime)
