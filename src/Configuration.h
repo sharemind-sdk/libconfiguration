@@ -46,6 +46,8 @@ class Configuration {
 
 private: /* Types: */
 
+    using ptree = boost::property_tree::ptree;
+
     struct Inner;
 
     #define SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DECLARE(C,c) \
@@ -62,8 +64,7 @@ private: /* Types: */
                     noexcept; \
             C ## IteratorTransformer & operator=( \
                     C ## IteratorTransformer const &) noexcept; \
-            Configuration c operator()( \
-                    boost::property_tree::ptree::value_type c & value) const; \
+            Configuration c operator()(ptree::value_type c & value) const; \
         private: /* Fields: */ \
             std::shared_ptr<Path const> m_path; \
             std::shared_ptr<Inner> m_inner; \
@@ -98,7 +99,7 @@ public: /* Types: */
             T
         >::type;
 
-    using SizeType = boost::property_tree::ptree::size_type;
+    using SizeType = ptree::size_type;
 
     SHAREMIND_DECLARE_EXCEPTION_NOINLINE(sharemind::Exception, Exception);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
@@ -156,14 +157,11 @@ public: /* Types: */
             IncludeDirectiveMissingArgumentException);
 
     using Iterator =
-            boost::transform_iterator<
-                IteratorTransformer,
-                boost::property_tree::ptree::iterator>;
+            boost::transform_iterator<IteratorTransformer, ptree::iterator>;
 
     using ConstIterator =
-            boost::transform_iterator<
-                ConstIteratorTransformer,
-                boost::property_tree::ptree::const_iterator>;
+            boost::transform_iterator<ConstIteratorTransformer,
+                                      ptree::const_iterator>;
 
     class Interpolation {
 
@@ -260,13 +258,13 @@ private: /* Methods: */
 
     Configuration(std::shared_ptr<Path const> path,
                   std::shared_ptr<Inner> inner,
-                  boost::property_tree::ptree & ptree) noexcept;
+                  ptree & ptree) noexcept;
 
 private: /* Fields: */
 
     std::shared_ptr<Path const> m_path;
     std::shared_ptr<Inner> m_inner;
-    boost::property_tree::ptree * m_ptree;
+    ptree * m_ptree;
 
 };
 

@@ -545,7 +545,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
 
     std::shared_ptr<Interpolation> m_interpolation;
     std::string m_filename;
-    boost::property_tree::ptree m_ptree;
+    ptree m_ptree;
 
 };
 
@@ -568,7 +568,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     Configuration::C ## IteratorTransformer::operator=( \
             C ## IteratorTransformer const &) noexcept = default; \
     Configuration c Configuration::C ## IteratorTransformer::operator()( \
-            boost::property_tree::ptree::value_type c & value) const \
+            ptree::value_type c & value) const \
     { \
         if (m_path) { \
             assert(!m_path->empty()); \
@@ -584,7 +584,7 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     }
 SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE(,,value.second)
 SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE(Const,const,
-    const_cast<boost::property_tree::ptree &>(value.second))
+    const_cast<ptree &>(value.second))
 #undef SHAREMIND_LIBCONFIGURATION_CONFIGURATION_IF_DEFINE
 
 SHAREMIND_DEFINE_EXCEPTION_NOINLINE(sharemind::Exception,
@@ -808,7 +808,7 @@ Configuration::Configuration(std::vector<std::string> const & tryPaths,
 
 Configuration::Configuration(std::shared_ptr<Path const> path,
                              std::shared_ptr<Inner> inner,
-                             boost::property_tree::ptree & ptree)
+                             ptree & ptree)
         noexcept
     : m_path(std::move(path))
     , m_inner(std::move(inner))
@@ -968,7 +968,7 @@ auto Configuration::get(Path const & path_,
                         DefaultValueType<T> defaultValue) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    boost::property_tree::ptree const * child = m_ptree;
+    auto const * child = m_ptree;
     try {
         child = &findChild(m_ptree, path_);
     } catch (...) {
