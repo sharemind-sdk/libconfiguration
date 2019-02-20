@@ -429,12 +429,24 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                 auto & valuePtr = it->second.data();
                 if (valuePtr) {
                     auto const & v = getValueItem(valuePtr);
-                    throw Configuration::DuplicateKeyException(
-                            concat("Duplicate key \"", std::move(keyStr),
-                                   "\"! Previous declaration was in \"",
-                                   v.m_context.m_filename->string(),
-                                   "\" on line ", v.m_context.m_lineNumber,
-                                   '.'));
+                    if (tls.m_currentSection) {
+                        throw Configuration::DuplicateKeyException(
+                                concat("Duplicate key \"", std::move(keyStr),
+                                       "\" in section [",
+                                       tls.m_result.back().first,
+                                       "]! Previous declaration was in \"",
+                                       v.m_context.m_filename->string(),
+                                       "\" on line ", v.m_context.m_lineNumber,
+                                       '.'));
+                    } else {
+                        throw Configuration::DuplicateKeyException(
+                                concat("Duplicate top-level key \"",
+                                       std::move(keyStr),
+                                       "\"! Previous declaration was in \"",
+                                       v.m_context.m_filename->string(),
+                                       "\" on line ", v.m_context.m_lineNumber,
+                                       '.'));
+                    }
                 }
                 valuePtr = std::move(valueItem);
             } else {
