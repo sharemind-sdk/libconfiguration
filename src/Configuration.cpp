@@ -183,6 +183,35 @@ struct FileParseJob {
 
     std::string prepareValue(StringView s) const;
 
+    // Helper to escape currentFileDirectory in a lazy fashion:
+    std::string const & getEscapedCurrentFileDirectory() const {
+        if (m_escapedCurrentFileDirectory.hasValue())
+            return *m_escapedCurrentFileDirectory;
+        auto cfd(boost::filesystem::canonical(
+                     boost::filesystem::path(
+                         m_path)).parent_path().string());
+        auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
+        if (it == cfd.cend())
+            return m_escapedCurrentFileDirectory.emplace(
+                    std::move(cfd));
+
+        // Escape % signs and setup diversion:
+        auto & c = m_escapedCurrentFileDirectory.emplace();
+        c.reserve(cfd.size() + 1u);
+        c.assign(cfd.cbegin(), it);
+        c.push_back('%');
+        c.push_back('%');
+        while (++it != cfd.cend()) {
+            if (*it == '%') {
+                c.push_back('%');
+                c.push_back('%');
+            } else {
+                c.push_back(*it);
+            }
+        }
+        return c;
+    }
+
     std::string const m_path;
     mutable Optional<std::string> m_escapedCurrentFileDirectory;
     std::unique_ptr<FileParseJob> m_prev;
@@ -191,36 +220,6 @@ struct FileParseJob {
 
 
 std::string FileParseJob::prepareValue(StringView s) const {
-    // Helper to escape currentFileDirectory in a lazy fashion:
-    auto getEscapedCurrentFileDirectory =
-            [this]() -> std::string const & {
-                if (m_escapedCurrentFileDirectory.hasValue())
-                    return *m_escapedCurrentFileDirectory;
-                auto cfd(boost::filesystem::canonical(
-                             boost::filesystem::path(
-                                 m_path)).parent_path().string());
-                auto it(std::find(cfd.cbegin(), cfd.cend(), '%'));
-                if (it == cfd.cend())
-                    return m_escapedCurrentFileDirectory.emplace(
-                            std::move(cfd));
-
-                // Escape % signs and setup diversion:
-                auto & c = m_escapedCurrentFileDirectory.emplace();
-                c.reserve(cfd.size() + 1u);
-                c.assign(cfd.cbegin(), it);
-                c.push_back('%');
-                c.push_back('%');
-                while (++it != cfd.cend()) {
-                    if (*it == '%') {
-                        c.push_back('%');
-                        c.push_back('%');
-                    } else {
-                        c.push_back(*it);
-                    }
-                }
-                return c;
-            };
-
     std::string r;
     r.reserve(s.size());
     for (auto escapePos = s.findFirstOf('%');
