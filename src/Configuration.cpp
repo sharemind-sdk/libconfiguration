@@ -420,26 +420,29 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 
             auto & container =
                     tls.m_currentSection ? *tls.m_currentSection : tls.m_result;
-            {
-                auto const it(container.find(keyStr));
-                if (it != container.not_found()) {
+            auto valueItem(std::make_shared<ValueItem>(
+                               fpj.prepareValue(
+                                   lv.substr(sepPos + 1u).trimmed(whitespace)),
+                               fpj.m_canonicalPath,
+                               m_lineNumber));
+            auto const it(container.find(keyStr));
+            if (it != container.not_found()) {
+                auto & valuePtr = it->second.data();
+                if (valuePtr) {
                     auto const & v = ValueItem::fromPtree(it->second);
                     throw Configuration::DuplicateKeyException(
                             concat("Duplicate key \"", std::move(keyStr),
                                    "\"! Previous declaration was in \"",
-                                   v.m_context.m_filename->string(), "\" on line ",
-                                   v.m_context.m_lineNumber, '.'));
+                                   v.m_context.m_filename->string(),
+                                   "\" on line ", v.m_context.m_lineNumber,
+                                   '.'));
                 }
+                valuePtr = std::move(valueItem);
+            } else {
+                container.push_back(
+                            std::make_pair(std::move(keyStr),
+                                           Ptree(std::move(valueItem))));
             }
-
-            auto const data(lv.substr(sepPos + 1u).trimmed(whitespace));
-
-            container.push_back(
-                        std::make_pair(std::move(keyStr),
-                                       Ptree(std::make_shared<ValueItem>(
-                                                 fpj.prepareValue(data),
-                                                 fpj.m_canonicalPath,
-                                                 m_lineNumber))));
         }
     }
     // Drop last section, if it was empty:
