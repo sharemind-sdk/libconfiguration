@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <glob.h>
 #include <limits>
+#include <map>
 #include <new>
 #include <set>
 #include <sharemind/Concat.h>
@@ -344,6 +345,7 @@ struct TopLevelParseState {
     Ptree * m_currentSection = nullptr;
     std::unique_ptr<FileParseJob> m_fileParseJob;
     std::set<FileId> m_visitedFiles;
+    std::map<std::string, ConfigurationFileContextInfo> m_sectionHeaderContexts;
 };
 
 template <typename Ptree>
@@ -371,8 +373,23 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
                 throw Configuration::InvalidSyntaxException();
             auto keyStr(lv.substr(1, end - 1).trimmed(whitespace).str());
-            if (tls.m_result.find(keyStr) != tls.m_result.not_found())
-                throw Configuration::DuplicateSectionNameException();
+            {
+                auto const it(tls.m_sectionHeaderContexts.find(keyStr));
+                if (it != tls.m_sectionHeaderContexts.end()) {
+                    auto const & ctx = it->second;
+                    throw Configuration::DuplicateSectionNameException(
+                                concat(
+                                    "Duplicate section \"", std::move(keyStr),
+                                    "\"! Previous declaration was in \"",
+                                    ctx.m_filename->string(), "\" on line ",
+                                    ctx.m_lineNumber, '.'));
+                }
+            }
+            assert(tls.m_result.find(keyStr) == tls.m_result.not_found());
+            tls.m_sectionHeaderContexts.emplace(keyStr,
+                                                ConfigurationFileContextInfo{
+                                                    fpj.m_canonicalPath,
+                                                    m_lineNumber});
             tls.m_currentSection =
                     &tls.m_result.push_back(
                         std::make_pair(std::move(keyStr), Ptree()))->second;
@@ -720,11 +737,10 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         InvalidSyntaxException,
         "Invalid syntax!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
-        DuplicateSectionNameException,
-        "Duplicate section name given!");
+        DuplicateSectionNameException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,

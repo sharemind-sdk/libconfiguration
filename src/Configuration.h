@@ -135,7 +135,7 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
             Exception,
             InvalidSyntaxException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
+    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
             DuplicateSectionNameException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
