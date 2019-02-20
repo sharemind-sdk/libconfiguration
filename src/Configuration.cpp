@@ -56,6 +56,11 @@ using LineNumber =
             StrongTypeStreamable
         >;
 
+struct ConfigurationFileContextInfo {
+    std::shared_ptr<boost::filesystem::path const> const m_filename;
+    LineNumber const m_lineNumber;
+};
+
 struct ValueItem {
 
     ValueItem(std::string value,
@@ -66,8 +71,7 @@ struct ValueItem {
                             std::shared_ptr<std::string> >::value
                      && std::is_nothrow_move_constructible<LineNumber>::value)
         : m_value(std::move(value))
-        , m_filename(std::move(filename))
-        , m_lineNumber(std::move(lineNumber))
+        , m_context{std::move(filename), std::move(lineNumber)}
     {}
 
     ValueItem(ValueItem &&) = delete;
@@ -85,8 +89,8 @@ struct ValueItem {
             std::throw_with_nested(
                     Configuration::InterpolationException(
                         concat("Failed to interpolate configuration value from "
-                               "file \"", m_filename->string(),
-                               "\" line ", m_lineNumber)));
+                               "file \"", m_context.m_filename->string(),
+                               "\" line ", m_context.m_lineNumber)));
         }
     }
 
@@ -97,8 +101,7 @@ struct ValueItem {
     }
 
     std::string const m_value;
-    std::shared_ptr<boost::filesystem::path const> const m_filename;
-    LineNumber const m_lineNumber;
+    ConfigurationFileContextInfo const m_context;
 };
 
 #ifdef __clang__
@@ -403,8 +406,8 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                     throw Configuration::DuplicateKeyException(
                             concat("Duplicate key \"", std::move(keyStr),
                                    "\"! Previous declaration was in \"",
-                                   *v.m_filename, "\" on line ", v.m_lineNumber,
-                                   '.'));
+                                   v.m_context.m_filename->string(), "\" on line ",
+                                   v.m_context.m_lineNumber, '.'));
                 }
             }
 
