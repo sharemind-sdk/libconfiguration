@@ -109,8 +109,8 @@ Path & operator<<(Path & path, std::string str) {
 
 Path & operator<<(Path & path, Path const & path2) {
     auto & cs = path.components();
-    for (auto const & str : path2.components())
-        cs.emplace_back(str);
+    auto const & cs2 = path2.components();
+    cs.insert(cs.end(), cs2.begin(), cs2.end());
     return path;
 }
 
