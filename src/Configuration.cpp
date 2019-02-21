@@ -972,18 +972,6 @@ Configuration::interpolation() const noexcept
 void Configuration::setInterpolation(std::shared_ptr<Interpolation> i) noexcept
 { m_inner->m_interpolation = std::move(i); }
 
-void Configuration::loadInterpolationOverridesFromSection(
-        std::string const & sectionName)
-{
-    if (!m_inner->m_interpolation)
-        m_inner->m_interpolation = std::make_shared<Interpolation>();
-    if (auto const section = m_inner->m_ptree.get_child_optional(sectionName))
-        for (auto const & vp : *section)
-            m_inner->m_interpolation->addVariable(
-                        vp.first,
-                        getValueItem(vp.second.data()).m_value);
-}
-
 std::string const & Configuration::filename() const noexcept
 { return m_inner->m_filename; }
 

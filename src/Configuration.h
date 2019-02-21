@@ -226,9 +226,6 @@ public: /* Methods: */
     std::shared_ptr<Interpolation> const & interpolation() const noexcept;
     void setInterpolation(std::shared_ptr<Interpolation> i) noexcept;
 
-    void loadInterpolationOverridesFromSection(
-            std::string const & sectionName = "Interpolations");
-
     /** \returns the path of the file from which the root of the configuration
                  was loaded from. */
     std::string const & filename() const noexcept;
