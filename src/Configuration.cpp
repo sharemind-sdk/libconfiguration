@@ -70,6 +70,8 @@ struct ConfigurationFileContextInfo {
     LineNumber const m_lineNumber;
 };
 
+using SectionItem = ConfigurationFileContextInfo;
+
 struct ValueItem {
 
     ValueItem(std::string value,
@@ -107,9 +109,49 @@ struct ValueItem {
     ConfigurationFileContextInfo const m_context;
 };
 
-inline ValueItem const & getValueItem(std::shared_ptr<void const> const & ptr)
-        noexcept
-{ return *static_cast<ValueItem const *>(assertReturn(ptr).get()); }
+class TreeItem {
+
+public: /* Methods: */
+
+    TreeItem() noexcept = default;
+
+    TreeItem(TreeItem &&) = delete;
+    TreeItem(TreeItem const &) = delete;
+
+    TreeItem & operator=(TreeItem &&) = delete;
+    TreeItem & operator=(TreeItem const &) = delete;
+
+    bool hasValueItem() const noexcept { return m_valueItem.hasValue(); }
+    bool hasSectionItem() const noexcept { return m_sectionItem.hasValue(); }
+
+    ValueItem const & valueItem() const noexcept { return *m_valueItem; }
+    ConfigurationFileContextInfo const & sectionItem() const noexcept
+    { return *m_sectionItem; }
+
+    template <typename ... Args>
+    void initializeValueItem(Args && ... args) {
+        assert(!m_valueItem.hasValue());
+        m_valueItem.emplace(std::forward<Args>(args)...);
+    }
+
+    template <typename ... Args>
+    void initializeSectionItem(Args && ... args) {
+        assert(!m_sectionItem.hasValue());
+        m_sectionItem.emplace(std::forward<Args>(args)...);
+    }
+
+    void eraseValueItem() noexcept { m_valueItem.reset(); }
+    void eraseSectionItem() noexcept { m_sectionItem.reset(); }
+
+private: /* Fields: */
+
+    Optional<ValueItem> m_valueItem;
+    Optional<SectionItem> m_sectionItem;
+
+};
+
+inline TreeItem & getTreeItem(std::shared_ptr<void> const & ptr) noexcept
+{ return *static_cast<TreeItem *>(assertReturn(ptr).get()); }
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -351,7 +393,6 @@ struct TopLevelParseState {
     Ptree * m_currentSection = nullptr;
     std::unique_ptr<FileParseJob> m_fileParseJob;
     std::set<FileId> m_visitedFiles;
-    std::map<std::string, ConfigurationFileContextInfo> m_sectionHeaderContexts;
 };
 
 template <typename Ptree>
@@ -377,29 +418,30 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
                 throw Configuration::InvalidSyntaxException();
             auto keyStr(lv.substr(1, end - 1).trimmed(whitespace).str());
-            {
-                auto const it(tls.m_sectionHeaderContexts.find(keyStr));
-                if (it != tls.m_sectionHeaderContexts.end()) {
-                    auto const & ctx = it->second;
+            auto const sectionIt(tls.m_result.find(keyStr));
+            if (sectionIt != tls.m_result.not_found()) {
+                assert(sectionIt->second.data()); // Nothing erased yet
+                auto & t = getTreeItem(sectionIt->second.data());
+                if (t.hasSectionItem()) {
+                    auto const & ctx = t.sectionItem();
                     throw Configuration::DuplicateSectionNameException(
                                 concat(
                                     "Duplicate section \"", std::move(keyStr),
                                     "\"! Previous declaration was in \"",
                                     ctx.m_filename->string(), "\" on line ",
                                     ctx.m_lineNumber, '.'));
+                } else {
+                    t.initializeSectionItem(fpj.m_canonicalPath, m_lineNumber);
+                    tls.m_currentSection = &sectionIt->second;
                 }
-            }
-            tls.m_sectionHeaderContexts.emplace(keyStr,
-                                                ConfigurationFileContextInfo{
-                                                    fpj.m_canonicalPath,
-                                                    m_lineNumber});
-            auto const sectionIt(tls.m_result.find(keyStr));
-            if (sectionIt == tls.m_result.not_found()) {
+            } else {
+                auto treeItem = std::make_shared<TreeItem>();
+                treeItem->initializeSectionItem(fpj.m_canonicalPath,
+                                                m_lineNumber);
                 tls.m_currentSection =
                         &tls.m_result.push_back(
-                            std::make_pair(std::move(keyStr), Ptree()))->second;
-            } else {
-                tls.m_currentSection = &sectionIt->second;
+                            std::make_pair(std::move(keyStr),
+                                           Ptree(std::move(treeItem))))->second;
             }
         } else if (lv.front() == '@') { // Parse directives:
             auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
@@ -424,40 +466,45 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 
             auto & container =
                     tls.m_currentSection ? *tls.m_currentSection : tls.m_result;
-            auto valueItem(std::make_shared<ValueItem>(
-                               fpj.prepareValue(
-                                   lv.substr(sepPos + 1u).trimmed(whitespace)),
-                               fpj.m_canonicalPath,
-                               m_lineNumber));
             auto const it(container.find(keyStr));
             if (it != container.not_found()) {
-                auto & valuePtr = it->second.data();
-                if (valuePtr) {
-                    auto const & v = getValueItem(valuePtr);
+                assert(it->second.data()); // Nothing erased yet
+                auto & t = getTreeItem(it->second.data());
+                if (t.hasValueItem()) {
+                    auto const & ctx = t.valueItem().m_context;
                     if (tls.m_currentSection) {
                         throw Configuration::DuplicateKeyException(
                                 concat("Duplicate key \"", std::move(keyStr),
                                        "\" in section [",
                                        tls.m_result.back().first,
                                        "]! Previous declaration was in \"",
-                                       v.m_context.m_filename->string(),
-                                       "\" on line ", v.m_context.m_lineNumber,
-                                       '.'));
+                                       ctx.m_filename->string(), "\" on line ",
+                                       ctx.m_lineNumber, '.'));
                     } else {
                         throw Configuration::DuplicateKeyException(
                                 concat("Duplicate top-level key \"",
                                        std::move(keyStr),
                                        "\"! Previous declaration was in \"",
-                                       v.m_context.m_filename->string(),
-                                       "\" on line ", v.m_context.m_lineNumber,
-                                       '.'));
+                                       ctx.m_filename->string(), "\" on line ",
+                                       ctx.m_lineNumber, '.'));
                     }
+                } else {
+                    t.initializeValueItem(
+                                fpj.prepareValue(
+                                    lv.substr(sepPos + 1u).trimmed(whitespace)),
+                                fpj.m_canonicalPath,
+                                m_lineNumber);
                 }
-                valuePtr = std::move(valueItem);
             } else {
+                auto treeItem = std::make_shared<TreeItem>();
+                treeItem->initializeValueItem(
+                            fpj.prepareValue(
+                                lv.substr(sepPos + 1u).trimmed(whitespace)),
+                            fpj.m_canonicalPath,
+                            m_lineNumber);
                 container.push_back(
                             std::make_pair(std::move(keyStr),
-                                           Ptree(std::move(valueItem))));
+                                           Ptree(std::move(treeItem))));
             }
         }
     }
@@ -515,26 +562,34 @@ template <> struct ValueHandler<std::string> {
 };
 
 template <typename Ptree>
-Ptree const & findChild(Ptree const * r, Path const & path_) {
-    try {
-        for (auto const & component : path_.components())
-            r = std::addressof(r->get_child(component));
-    } catch (...) {
-        std::throw_with_nested(Configuration::PathNotFoundException());
+ValueItem const * findValueItem(Ptree const & ptree) {
+    if (auto const & valuePtr = ptree.data()) {
+        auto const & treeItem = getTreeItem(valuePtr);
+        if (treeItem.hasValueItem())
+            return &treeItem.valueItem();
     }
-    return *r;
+    return nullptr;
 }
 
 template <typename Ptree>
-ValueItem const & findValueItem(Ptree const & ptree) {
-    if (auto const & valuePtr = ptree.data())
-        return getValueItem(valuePtr);
-    throw Configuration::ValueNotFoundException();
+Ptree const * findChild(Ptree const & ptree, Path const & path) {
+    auto r = &ptree;
+    for (auto const & component : path.components()) {
+        if (auto const p = r->get_child_optional(component)) {
+            r = &*p;
+        } else {
+            return nullptr;
+        }
+    }
+    return r;
 }
 
 template <typename Ptree>
-ValueItem const & findValueItem(Ptree const & ptree, Path const & path)
-{ return findValueItem(findChild(&ptree, path)); }
+ValueItem const * findValueItem(Ptree const & ptree, Path const & path) {
+    if (auto const * child = findChild(ptree, path))
+        return findValueItem(*child);
+    return nullptr;
+}
 
 } // anonymous namespace
 
@@ -735,11 +790,6 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
 SHAREMIND_DEFINE_EXCEPTION_NOINLINE(Exception,
                                     Configuration::,
                                     NotFoundException);
-SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
-        NotFoundException,
-        Configuration::,
-        PathNotFoundException,
-        "Path not found in configuration!");
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         NotFoundException,
         Configuration::,
@@ -1083,22 +1133,24 @@ template <typename T>
 auto Configuration::value() const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & valueItem = findValueItem(*m_ptree);
-    return ValueHandler<T>::parse(
-                m_inner->m_interpolation
-                ? valueItem.interpolated(*m_inner->m_interpolation)
-                : valueItem.m_value);
+    if (auto const * valueItem = findValueItem(*m_ptree))
+        return ValueHandler<T>::parse(
+                    m_inner->m_interpolation
+                    ? valueItem->interpolated(*m_inner->m_interpolation)
+                    : valueItem->m_value);
+    throw ValueNotFoundException();
 }
 
 template <typename T>
 auto Configuration::get(Path const & path_) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    auto const & valueItem = findValueItem(*m_ptree, path_);
-    return ValueHandler<T>::parse(
-                m_inner->m_interpolation
-                ? valueItem.interpolated(*m_inner->m_interpolation)
-                : valueItem.m_value);
+    if (auto const * valueItem = findValueItem(*m_ptree, path_))
+        return ValueHandler<T>::parse(
+                    m_inner->m_interpolation
+                    ? valueItem->interpolated(*m_inner->m_interpolation)
+                    : valueItem->m_value);
+    throw ValueNotFoundException();
 }
 
 template <typename T>
@@ -1106,16 +1158,12 @@ auto Configuration::get(Path const & path_,
                         DefaultValueType<T> defaultValue) const
         -> typename std::enable_if<isReadableValueType<T>, T>::type
 {
-    ValueItem const * valueItem;
-    try {
-        valueItem = &findValueItem(*m_ptree, path_);
-    } catch (NotFoundException const &) {
-        return ValueHandler<T>::generateDefault(defaultValue);
-    }
-    return ValueHandler<T>::parse(
-                m_inner->m_interpolation
-                ? valueItem->interpolated(*m_inner->m_interpolation)
-                : valueItem->m_value);
+    if (auto const * valueItem = findValueItem(*m_ptree, path_))
+        return ValueHandler<T>::parse(
+                    m_inner->m_interpolation
+                    ? valueItem->interpolated(*m_inner->m_interpolation)
+                    : valueItem->m_value);
+    return ValueHandler<T>::generateDefault(defaultValue);
 }
 
 #define DEFINE_GETTERS(T) \

@@ -49,7 +49,7 @@ private: /* Types: */
     using ptree =
             boost::property_tree::basic_ptree<
                 std::string,
-                std::shared_ptr<void const>
+                std::shared_ptr<void>
             >;
 
     struct Inner;
@@ -120,8 +120,6 @@ public: /* Types: */
             Exception,
             FailedToOpenAndParseConfigurationException);
     SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, NotFoundException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
-                                                   PathNotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
                                                    ValueNotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
