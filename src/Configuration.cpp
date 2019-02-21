@@ -608,6 +608,14 @@ SectionItem const * findSectionItem(Ptree const & ptree, Path const & path) {
     return nullptr;
 }
 
+template <typename Ptree>
+inline bool valueEraser(TreeItem & t, Ptree &) noexcept {
+    if (!t.hasSectionItem())
+        return true;
+    t.eraseValueItem();
+    return false;
+}
+
 } // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
@@ -1105,6 +1113,12 @@ void Configuration::erase(Path const & path) noexcept {
         }
         parent->erase(*it);
     }
+}
+
+void Configuration::eraseValue() noexcept {
+    if (auto const & valuePtr = m_ptree->data())
+        if (valueEraser(getTreeItem(valuePtr), *m_ptree))
+            m_ptree->clear();
 }
 
 std::string Configuration::interpolate(StringView value) const {
