@@ -266,6 +266,7 @@ public: /* Methods: */
 
     void clear() noexcept;
 
+    void erase() noexcept;
     void erase(Path const & path) noexcept;
     void eraseValue() noexcept;
     void eraseValue(Path const & path) noexcept;
