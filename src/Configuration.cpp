@@ -1018,20 +1018,20 @@ Configuration::ConstIterator Configuration::cend() const noexcept
 { return ConstIterator(m_ptree->end(), *this); }
 
 void Configuration::erase(Path const & path) noexcept {
-    auto const end(std::end(path.components()));
+    auto end(std::end(path.components()));
     auto it(std::begin(path.components()));
-
-    try {
-        auto child(m_ptree);
-        for (;;) {
-            auto nextIt(std::next(it));
-            if (nextIt == end)
-                break;
-            child = std::addressof(child->get_child(*it));
+    if (it == end) {
+        m_ptree->clear();
+    } else {
+        auto parent(m_ptree);
+        for (--end; it != end; ++it) {
+            if (auto const child = parent->get_child_optional(*it)) {
+                parent = &*child;
+            } else {
+                return;
+            }
         }
-        child->erase(*it);
-    } catch (...) {
-        std::throw_with_nested(PathNotFoundException());
+        parent->erase(*it);
     }
 }
 
