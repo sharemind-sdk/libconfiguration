@@ -122,6 +122,8 @@ public: /* Types: */
     SHAREMIND_DECLARE_EXCEPTION_NOINLINE(Exception, NotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
                                                    ValueNotFoundException);
+    SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(NotFoundException,
+                                                   SectionNotFoundException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception,
                                                    FailedToParseValueException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(Exception, GlobException);
@@ -259,6 +261,8 @@ public: /* Methods: */
     template <typename T>
     auto get(Path const & path_, DefaultValueType<T> defaultValue) const
             -> typename std::enable_if<isReadableValueType<T>, T>::type;
+
+    Configuration section(Path const & path) const;
 
     void erase(Path const & path) noexcept;
 

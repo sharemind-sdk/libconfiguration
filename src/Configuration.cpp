@@ -582,7 +582,7 @@ SectionItem const * findSectionItem(Ptree const & ptree) {
 }
 
 template <typename Ptree>
-Ptree const * findChild(Ptree const & ptree, Path const & path) {
+Ptree * findChild(Ptree & ptree, Path const & path) {
     auto r = &ptree;
     for (auto const & component : path.components()) {
         if (auto const p = r->get_child_optional(component)) {
@@ -812,6 +812,11 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         ValueNotFoundException,
         "No value defined at the requested path!");
+SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
+        NotFoundException,
+        Configuration::,
+        SectionNotFoundException,
+        "No section defined at the requested path!");
 SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Exception,
         Configuration::,
@@ -1198,6 +1203,16 @@ auto Configuration::get(Path const & path_,
                     ? valueItem->interpolated(*m_inner->m_interpolation)
                     : valueItem->m_value);
     return ValueHandler<T>::generateDefault(defaultValue);
+}
+
+Configuration Configuration::section(Path const & path) const {
+    if (auto * child = findChild(*m_ptree, path))
+        if (auto const & valuePtr = child->data())
+            if (getTreeItem(valuePtr).hasSectionItem())
+                return Configuration(std::make_shared<Path>(*m_path + path),
+                                     m_inner,
+                                     *child);
+    throw SectionNotFoundException();
 }
 
 #define DEFINE_GETTERS(T) \
