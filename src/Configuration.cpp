@@ -1129,6 +1129,14 @@ static_assert(isAlsoFixedSize<unsigned int>, "");
 static_assert(isAlsoFixedSize<signed long int>, "");
 static_assert(isAlsoFixedSize<unsigned long int>, "");
 
+bool Configuration::hasValue() const {
+    if (auto const & valuePtr = m_ptree->data())
+        return getTreeItem(valuePtr).hasValueItem();
+    return false;
+}
+bool Configuration::hasValue(Path const & path) const
+{ return findValueItem(*m_ptree, path); }
+
 template <typename T>
 auto Configuration::value() const
         -> typename std::enable_if<isReadableValueType<T>, T>::type

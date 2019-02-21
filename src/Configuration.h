@@ -243,6 +243,9 @@ public: /* Methods: */
     ConstIterator end() const noexcept;
     ConstIterator cend() const noexcept;
 
+    bool hasValue() const;
+    bool hasValue(Path const & path) const;
+
     template <typename T>
     auto value() const
             -> typename std::enable_if<isReadableValueType<T>, T>::type;
