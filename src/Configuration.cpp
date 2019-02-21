@@ -59,6 +59,13 @@ using LineNumber =
         >;
 
 struct ConfigurationFileContextInfo {
+    ConfigurationFileContextInfo(
+            std::shared_ptr<boost::filesystem::path const> filename,
+            LineNumber lineNumber)
+        : m_filename(std::move(filename))
+        , m_lineNumber(std::move(lineNumber))
+    {}
+
     std::shared_ptr<boost::filesystem::path const> const m_filename;
     LineNumber const m_lineNumber;
 };
@@ -73,7 +80,7 @@ struct ValueItem {
                             std::shared_ptr<std::string> >::value
                      && std::is_nothrow_move_constructible<LineNumber>::value)
         : m_value(std::move(value))
-        , m_context{std::move(filename), std::move(lineNumber)}
+        , m_context(std::move(filename), std::move(lineNumber))
     {}
 
     ValueItem(ValueItem &&) = delete;
