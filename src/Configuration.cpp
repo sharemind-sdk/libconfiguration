@@ -616,6 +616,15 @@ inline bool valueEraser(TreeItem & t, Ptree &) noexcept {
     return false;
 }
 
+template <typename Ptree>
+inline bool sectionEraser(TreeItem & t, Ptree & element) noexcept {
+    if (!t.hasValueItem())
+        return true;
+    t.eraseSectionItem();
+    element.erase(element.begin(), element.end());
+    return false;
+}
+
 } // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
@@ -1118,6 +1127,12 @@ void Configuration::erase(Path const & path) noexcept {
 void Configuration::eraseValue() noexcept {
     if (auto const & valuePtr = m_ptree->data())
         if (valueEraser(getTreeItem(valuePtr), *m_ptree))
+            m_ptree->clear();
+}
+
+void Configuration::eraseSection() noexcept {
+    if (auto const & valuePtr = m_ptree->data())
+        if (sectionEraser(getTreeItem(valuePtr), *m_ptree))
             m_ptree->clear();
 }
 
