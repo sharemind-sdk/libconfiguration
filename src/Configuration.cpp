@@ -625,6 +625,39 @@ inline bool sectionEraser(TreeItem & t, Ptree & element) noexcept {
     return false;
 }
 
+template <typename Ptree>
+void erasePart(Ptree & root,
+               Path const & path,
+               bool (*eraseReturnWhetherNeedFullErasure)(TreeItem &,
+                                                         Ptree &) noexcept)
+        noexcept
+{
+    auto end(std::end(path.components()));
+    auto it(std::begin(path.components()));
+    if (it == end) {
+        if (auto const & valuePtr = root.data())
+            if (eraseReturnWhetherNeedFullErasure(getTreeItem(valuePtr), root))
+                root.clear();
+        return;
+    }
+
+    auto parent(&root);
+    for (--end; it != end; ++it) {
+        if (auto const child = parent->get_child_optional(*it)) {
+            parent = &*child;
+        } else {
+            return;
+        }
+    }
+    if (auto const child = parent->get_child_optional(*it)) {
+        if (auto const & valuePtr = child->data())
+            if (!eraseReturnWhetherNeedFullErasure(getTreeItem(valuePtr),
+                                                   *child))
+                return;
+        parent->erase(*it);
+    }
+}
+
 } // anonymous namespace
 
 struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
@@ -1130,11 +1163,17 @@ void Configuration::eraseValue() noexcept {
             m_ptree->clear();
 }
 
+void Configuration::eraseValue(Path const & path) noexcept
+{ erasePart(*m_ptree, path, &valueEraser); }
+
 void Configuration::eraseSection() noexcept {
     if (auto const & valuePtr = m_ptree->data())
         if (sectionEraser(getTreeItem(valuePtr), *m_ptree))
             m_ptree->clear();
 }
+
+void Configuration::eraseSection(Path const & path) noexcept
+{ erasePart(*m_ptree, path, &sectionEraser); }
 
 std::string Configuration::interpolate(StringView value) const {
     return m_inner->m_interpolation

@@ -266,7 +266,9 @@ public: /* Methods: */
 
     void erase(Path const & path) noexcept;
     void eraseValue() noexcept;
+    void eraseValue(Path const & path) noexcept;
     void eraseSection() noexcept;
+    void eraseSection(Path const & path) noexcept;
 
     std::string interpolate(StringView value) const;
     std::string interpolate(StringView value, ::tm const & theTime) const;
