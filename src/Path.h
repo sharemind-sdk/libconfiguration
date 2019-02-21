@@ -33,7 +33,8 @@ class Path {
 
 public: /* Types: */
 
-    using Components = std::vector<std::string>;
+    using Component = std::string;
+    using Components = std::vector<Component>;
     using SizeType = Components::size_type;
 
 public: /* Methods: */
