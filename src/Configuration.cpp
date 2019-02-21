@@ -1139,6 +1139,8 @@ Configuration::ConstIterator Configuration::end() const noexcept
 Configuration::ConstIterator Configuration::cend() const noexcept
 { return ConstIterator(m_ptree->end(), *this); }
 
+void Configuration::clear() noexcept { m_ptree->clear(); }
+
 void Configuration::erase(Path const & path) noexcept {
     auto end(std::end(path.components()));
     auto it(std::begin(path.components()));

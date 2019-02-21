@@ -264,6 +264,8 @@ public: /* Methods: */
 
     Configuration section(Path const & path) const;
 
+    void clear() noexcept;
+
     void erase(Path const & path) noexcept;
     void eraseValue() noexcept;
     void eraseValue(Path const & path) noexcept;
