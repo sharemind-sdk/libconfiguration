@@ -245,6 +245,8 @@ public: /* Methods: */
 
     bool hasValue() const;
     bool hasValue(Path const & path) const;
+    bool hasSection() const;
+    bool hasSection(Path const & path) const;
 
     template <typename T>
     auto value() const

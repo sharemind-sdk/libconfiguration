@@ -572,6 +572,16 @@ ValueItem const * findValueItem(Ptree const & ptree) {
 }
 
 template <typename Ptree>
+SectionItem const * findSectionItem(Ptree const & ptree) {
+    if (auto const & valuePtr = ptree.data()) {
+        auto const & treeItem = getTreeItem(valuePtr);
+        if (treeItem.hasSectionItem())
+            return &treeItem.sectionItem();
+    }
+    return nullptr;
+}
+
+template <typename Ptree>
 Ptree const * findChild(Ptree const & ptree, Path const & path) {
     auto r = &ptree;
     for (auto const & component : path.components()) {
@@ -588,6 +598,13 @@ template <typename Ptree>
 ValueItem const * findValueItem(Ptree const & ptree, Path const & path) {
     if (auto const * child = findChild(ptree, path))
         return findValueItem(*child);
+    return nullptr;
+}
+
+template <typename Ptree>
+SectionItem const * findSectionItem(Ptree const & ptree, Path const & path) {
+    if (auto const * child = findChild(ptree, path))
+        return findSectionItem(*child);
     return nullptr;
 }
 
@@ -1136,6 +1153,15 @@ bool Configuration::hasValue() const {
 }
 bool Configuration::hasValue(Path const & path) const
 { return findValueItem(*m_ptree, path); }
+
+bool Configuration::hasSection() const {
+    if (auto const & valuePtr = m_ptree->data())
+        return getTreeItem(valuePtr).hasSectionItem();
+    return false;
+}
+
+bool Configuration::hasSection(Path const & path) const
+{ return findSectionItem(*m_ptree, path); }
 
 template <typename T>
 auto Configuration::value() const
