@@ -406,12 +406,27 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
         if (!m_inStream.good() && !m_inStream.eof())
             throw Configuration::FileReadException();
 
-        StringView lv(StringView(line).leftTrimmed(whitespace));
-
         // Ignore empty lines and comments:
-        if (lv.empty() || lv.front() == ';')
+        if (line.empty() || line.front() == ';')
             continue;
 
+        if (line.front() == '@') {
+            StringView const lv(line);
+            auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
+            auto const directive(lv.substr(1u, whitespacePos - 1u));
+            if (directive.empty())
+                throw Configuration::InvalidSyntaxException();
+            if (directive != "include"_sv)
+                throw Configuration::UnknownDirectiveException();
+            if (whitespacePos == StringView::npos)
+                throw Configuration::IncludeDirectiveMissingArgumentException();
+            auto arg(lv.substr(whitespacePos + 1u).trimmed(whitespace));
+            if (arg.empty())
+                throw Configuration::IncludeDirectiveMissingArgumentException();
+            return fpj.prepareValue(std::move(arg));
+        }
+
+        StringView lv(StringView(line).leftTrimmed(whitespace));
         if (lv.front() == '[') { // Parse section headers:
             auto const end(lv.find(']', 1u));
             if ((end == StringView::npos)
@@ -443,19 +458,6 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                             std::make_pair(std::move(keyStr),
                                            Ptree(std::move(treeItem))))->second;
             }
-        } else if (lv.front() == '@') { // Parse directives:
-            auto const whitespacePos(lv.findFirstOf(whitespace, 1u));
-            StringView directive(lv.substr(1u, whitespacePos - 1u));
-            if (directive.empty())
-                throw Configuration::InvalidSyntaxException();
-            if (directive != "include")
-                throw Configuration::UnknownDirectiveException();
-            if (whitespacePos == StringView::npos)
-                throw Configuration::IncludeDirectiveMissingArgumentException();
-            auto arg(lv.substr(whitespacePos + 1u).trimmed(whitespace));
-            if (arg.empty())
-                throw Configuration::IncludeDirectiveMissingArgumentException();
-            return fpj.prepareValue(std::move(arg));
         } else { // Parse key-value pairs:
             auto const sepPos(lv.find('='));
             if ((sepPos == std::string::npos) || (sepPos == 0u))
