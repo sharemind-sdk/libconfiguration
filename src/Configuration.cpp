@@ -125,7 +125,7 @@ public: /* Methods: */
     bool hasSectionItem() const noexcept { return m_sectionItem.hasValue(); }
 
     ValueItem const & valueItem() const noexcept { return *m_valueItem; }
-    ConfigurationFileContextInfo const & sectionItem() const noexcept
+    SectionItem const & sectionItem() const noexcept
     { return *m_sectionItem; }
 
     template <typename ... Args>
