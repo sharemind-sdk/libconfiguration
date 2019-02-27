@@ -70,8 +70,6 @@ struct ConfigurationFileContextInfo {
     LineNumber const m_lineNumber;
 };
 
-using SectionItem = ConfigurationFileContextInfo;
-
 struct ValueItem {
 
     ValueItem(std::string value,
@@ -122,11 +120,9 @@ public: /* Methods: */
     TreeItem & operator=(TreeItem const &) = delete;
 
     bool hasValueItem() const noexcept { return m_valueItem.hasValue(); }
-    bool hasSectionItem() const noexcept { return m_sectionItem.hasValue(); }
+    bool hasSectionItem() const noexcept { return m_haveSectionItem; }
 
     ValueItem const & valueItem() const noexcept { return *m_valueItem; }
-    SectionItem const & sectionItem() const noexcept
-    { return *m_sectionItem; }
 
     template <typename ... Args>
     void initializeValueItem(Args && ... args) {
@@ -134,19 +130,18 @@ public: /* Methods: */
         m_valueItem.emplace(std::forward<Args>(args)...);
     }
 
-    template <typename ... Args>
-    void initializeSectionItem(Args && ... args) {
-        assert(!m_sectionItem.hasValue());
-        m_sectionItem.emplace(std::forward<Args>(args)...);
+    void initializeSectionItem() {
+        assert(!m_haveSectionItem);
+        m_haveSectionItem = true;
     }
 
     void eraseValueItem() noexcept { m_valueItem.reset(); }
-    void eraseSectionItem() noexcept { m_sectionItem.reset(); }
+    void eraseSectionItem() noexcept { m_haveSectionItem = false; }
 
 private: /* Fields: */
 
     Optional<ValueItem> m_valueItem;
-    Optional<SectionItem> m_sectionItem;
+    bool m_haveSectionItem;
 
 };
 
@@ -437,22 +432,12 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             if (sectionIt != tls.m_result.not_found()) {
                 assert(sectionIt->second.data()); // Nothing erased yet
                 auto & t = getTreeItem(sectionIt->second.data());
-                if (t.hasSectionItem()) {
-                    auto const & ctx = t.sectionItem();
-                    throw Configuration::DuplicateSectionNameException(
-                                concat(
-                                    "Duplicate section \"", std::move(keyStr),
-                                    "\"! Previous declaration was in \"",
-                                    ctx.m_filename->string(), "\" on line ",
-                                    ctx.m_lineNumber, '.'));
-                } else {
-                    t.initializeSectionItem(fpj.m_canonicalPath, m_lineNumber);
-                    tls.m_currentSection = &sectionIt->second;
-                }
+                if (!t.hasSectionItem())
+                    t.initializeSectionItem();
+                tls.m_currentSection = &sectionIt->second;
             } else {
                 auto treeItem = std::make_shared<TreeItem>();
-                treeItem->initializeSectionItem(fpj.m_canonicalPath,
-                                                m_lineNumber);
+                treeItem->initializeSectionItem();
                 tls.m_currentSection =
                         &tls.m_result.push_back(
                             std::make_pair(std::move(keyStr),
@@ -574,13 +559,10 @@ ValueItem const * findValueItem(Ptree const & ptree) {
 }
 
 template <typename Ptree>
-SectionItem const * findSectionItem(Ptree const & ptree) {
-    if (auto const & valuePtr = ptree.data()) {
-        auto const & treeItem = getTreeItem(valuePtr);
-        if (treeItem.hasSectionItem())
-            return &treeItem.sectionItem();
-    }
-    return nullptr;
+bool hasSectionItem(Ptree const & ptree) {
+    if (auto const & valuePtr = ptree.data())
+        return getTreeItem(valuePtr).hasSectionItem();
+    return false;
 }
 
 template <typename Ptree>
@@ -604,10 +586,10 @@ ValueItem const * findValueItem(Ptree const & ptree, Path const & path) {
 }
 
 template <typename Ptree>
-SectionItem const * findSectionItem(Ptree const & ptree, Path const & path) {
+bool hasSectionItem(Ptree const & ptree, Path const & path) {
     if (auto const * child = findChild(ptree, path))
-        return findSectionItem(*child);
-    return nullptr;
+        return hasSectionItem(*child);
+    return false;
 }
 
 template <typename Ptree>
@@ -900,10 +882,6 @@ SHAREMIND_DEFINE_EXCEPTION_CONST_MSG_NOINLINE(
         Configuration::,
         InvalidSyntaxException,
         "Invalid syntax!");
-SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
-        Exception,
-        Configuration::,
-        DuplicateSectionNameException);
 SHAREMIND_DEFINE_EXCEPTION_CONST_STDSTRING_NOINLINE(
         Exception,
         Configuration::,
@@ -1240,7 +1218,7 @@ bool Configuration::hasSection() const {
 }
 
 bool Configuration::hasSection(Path const & path) const
-{ return findSectionItem(*m_ptree, path); }
+{ return hasSectionItem(*m_ptree, path); }
 
 template <typename T>
 auto Configuration::value() const

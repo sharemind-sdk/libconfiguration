@@ -140,9 +140,6 @@ public: /* Types: */
             InvalidSyntaxException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
             Exception,
-            DuplicateSectionNameException);
-    SHAREMIND_DECLARE_EXCEPTION_CONST_STDSTRING_NOINLINE(
-            Exception,
             DuplicateKeyException);
     SHAREMIND_DECLARE_EXCEPTION_CONST_MSG_NOINLINE(
             Exception,
