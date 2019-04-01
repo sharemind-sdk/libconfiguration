@@ -272,10 +272,10 @@ struct FileParseJob {
         LineNumber m_lineNumber{1u};
     };
 
-    FileParseJob(std::string path)
+    FileParseJob(boost::filesystem::path const & path)
         : m_canonicalPath(
               std::make_shared<boost::filesystem::path>(
-                  boost::filesystem::canonical(std::move(path))))
+                  boost::filesystem::canonical(path)))
     {}
 
     FileParseJob(FileParseJob &&) = delete;
@@ -372,8 +372,8 @@ struct TopLevelParseState {
         : m_result(ptree)
     {}
 
-    void pushJob(std::string filename) {
-        auto fileParseJob(std::make_unique<FileParseJob>(std::move(filename)));
+    void pushJob(boost::filesystem::path const & boostPath) {
+        auto fileParseJob(std::make_unique<FileParseJob>(boostPath));
         fileParseJob->m_prev = std::move(m_fileParseJob);
         m_fileParseJob = std::move(fileParseJob);
     }
@@ -655,21 +655,18 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
         if (tryPaths.empty())
             throw NoTryPathsGivenException();
         for (auto const & path : tryPaths) {
+            boost::filesystem::path boostPath(path);
+            if (!boost::filesystem::exists(boostPath))
+                continue;
             try {
-                initFromPath(path);
+                initFromPath(path, std::move(boostPath));
                 return;
-            } catch (std::system_error const & e) {
-                if ((e.code() != std::errc::no_such_file_or_directory)
-                    /* Work around libstdc++ std::system_category() not properly
-                       mapping its values to std::generic_category(), i.e.
-                       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60555 : */
-                    && ((e.code().category() != std::system_category())
-                        || (e.code().value() != ENOENT)))
-                    std::throw_with_nested(
-                                FailedToOpenAndParseConfigurationException(
-                                    concat("Failed to load or parse a valid "
-                                           "configuration from file \"", path,
-                                           "\"!")));
+            } catch (std::exception const & e) {
+                std::throw_with_nested(
+                            FailedToOpenAndParseConfigurationException(
+                                concat("Failed to load or parse a valid "
+                                       "configuration from file \"", path,
+                                       "\":", e.what())));
             } catch (...) {
                 std::throw_with_nested(
                             FailedToOpenAndParseConfigurationException(
@@ -722,8 +719,15 @@ struct SHAREMIND_VISIBILITY_INTERNAL Configuration::Inner {
     Inner & operator=(Inner const &) = delete;
 
     void initFromPath(std::string path) {
+        boost::filesystem::path const boostPath(path);
+        initFromPath(std::move(path), boostPath);
+    }
+
+    void initFromPath(std::string path,
+                      boost::filesystem::path const & boostPath)
+    {
         TopLevelParseState<decltype(m_ptree)> parser(m_ptree);
-        parser.pushJob(path);
+        parser.pushJob(boostPath);
 
         for (;;) {
             assert(parser.m_fileParseJob);
