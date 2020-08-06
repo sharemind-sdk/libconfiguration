@@ -429,21 +429,26 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
                 throw Configuration::InvalidSyntaxException();
             currentSectionName = lv.substr(1, end - 1).trimmed(whitespace);
-            auto keyStr(currentSectionName.str());
-            auto const sectionIt(tls.m_result.find(keyStr));
-            if (sectionIt != tls.m_result.not_found()) {
-                assert(sectionIt->second.data()); // Nothing erased yet
-                auto & t = getTreeItem(sectionIt->second.data());
-                if (!t.hasSectionItem())
-                    t.initializeSectionItem();
-                tls.m_currentSection = &sectionIt->second;
+            if (currentSectionName.empty()) {
+                tls.m_currentSection = nullptr;
             } else {
-                auto treeItem = std::make_shared<TreeItem>();
-                treeItem->initializeSectionItem();
-                tls.m_currentSection =
-                        &tls.m_result.push_back(
-                            std::make_pair(std::move(keyStr),
-                                           Ptree(std::move(treeItem))))->second;
+                auto keyStr(currentSectionName.str());
+                auto const sectionIt(tls.m_result.find(keyStr));
+                if (sectionIt != tls.m_result.not_found()) {
+                    assert(sectionIt->second.data()); // Nothing erased yet
+                    auto & t = getTreeItem(sectionIt->second.data());
+                    if (!t.hasSectionItem())
+                        t.initializeSectionItem();
+                    tls.m_currentSection = &sectionIt->second;
+                } else {
+                    auto treeItem = std::make_shared<TreeItem>();
+                    treeItem->initializeSectionItem();
+                    tls.m_currentSection =
+                            &tls.m_result.push_back(
+                                std::make_pair(
+                                    std::move(keyStr),
+                                    Ptree(std::move(treeItem))))->second;
+                }
             }
         } else { // Parse key-value pairs:
             auto const sepPos(lv.find('='));
