@@ -396,6 +396,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 {
     constexpr static auto const whitespace = " \t\n\r"_sv;
     std::string line;
+    StringView currentSectionName;
     for (; m_inStream.good(); ++m_lineNumber) {
         std::getline(m_inStream, line);
         if (!m_inStream.good() && !m_inStream.eof())
@@ -427,7 +428,8 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             if ((end == StringView::npos)
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
                 throw Configuration::InvalidSyntaxException();
-            auto keyStr(lv.substr(1, end - 1).trimmed(whitespace).str());
+            currentSectionName = lv.substr(1, end - 1).trimmed(whitespace);
+            auto keyStr(currentSectionName.str());
             auto const sectionIt(tls.m_result.find(keyStr));
             if (sectionIt != tls.m_result.not_found()) {
                 assert(sectionIt->second.data()); // Nothing erased yet
@@ -463,7 +465,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
                         throw Configuration::DuplicateKeyException(
                                 concat("Duplicate key \"", std::move(keyStr),
                                        "\" in section [",
-                                       tls.m_result.back().first,
+                                       currentSectionName,
                                        "]! Previous declaration was in \"",
                                        ctx.m_filename->string(), "\" on line ",
                                        ctx.m_lineNumber, '.'));
