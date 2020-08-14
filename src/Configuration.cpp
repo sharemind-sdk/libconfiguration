@@ -396,7 +396,7 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
 {
     constexpr static auto const whitespace = " \t\n\r"_sv;
     std::string line;
-    StringView currentSectionName;
+    std::string currentSectionName;
     for (; m_inStream.good(); ++m_lineNumber) {
         std::getline(m_inStream, line);
         if (!m_inStream.good() && !m_inStream.eof())
@@ -428,11 +428,12 @@ std::string FileParseJob::ParseState::parseFile(TopLevelParseState<Ptree> & tls,
             if ((end == StringView::npos)
                 || lv.findFirstNotOf(whitespace, end + 1u) != StringView::npos)
                 throw Configuration::InvalidSyntaxException();
-            currentSectionName = lv.substr(1, end - 1).trimmed(whitespace);
+            currentSectionName =
+                    lv.substr(1, end - 1).trimmed(whitespace).str();
             if (currentSectionName.empty()) {
                 tls.m_currentSection = nullptr;
             } else {
-                auto keyStr(currentSectionName.str());
+                auto keyStr(currentSectionName);
                 auto const sectionIt(tls.m_result.find(keyStr));
                 if (sectionIt != tls.m_result.not_found()) {
                     assert(sectionIt->second.data()); // Nothing erased yet
