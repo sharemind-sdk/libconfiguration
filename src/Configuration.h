@@ -26,7 +26,6 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
-#include <sharemind/comma.h>
 #include <sharemind/Exception.h>
 #include <sharemind/ExceptionMacros.h>
 #include <sharemind/StringView.h>
