@@ -23,16 +23,16 @@ PROJECT(SharemindLibConfiguration VERSION 0.4.0 LANGUAGES CXX)
 INCLUDE("${CMAKE_CURRENT_SOURCE_DIR}/config.local" OPTIONAL)
 INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 
-FIND_PACKAGE(SharemindCMakeHelpers 1.4 REQUIRED)
+FIND_PACKAGE(SharemindCMakeHelpers 1.6 REQUIRED)
 
 # Note: the library also uses Boost::iostreams but that component is not listed
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
 FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem REQUIRED)
-FIND_PACKAGE(SharemindCxxHeaders 0.7.0 REQUIRED)
+FIND_PACKAGE(SharemindCxxHeaders 0.8.0 REQUIRED)
 
 
-# Headers:
+# LibConfiguration:
 FILE(GLOB_RECURSE SharemindLibConfiguration_HEADERS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 FILE(GLOB_RECURSE SharemindLibConfiguration_PRIVATE_HEADERS
@@ -42,61 +42,38 @@ LIST(REMOVE_ITEM SharemindLibConfiguration_HEADERS
 INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
         DESTINATION "include/sharemind/libconfiguration"
         COMPONENT "dev")
-
-
-# The library:
-SharemindNewUniqueList(SharemindLibConfiguration_LINK_LIBRARIES
-    ${Boost_LIBRARIES}
-    ${SharemindCxxHeaders_LIBRARIES}
-)
-SharemindNewUniqueList(SharemindLibConfiguration_INCLUDE_DIRS
-    ${Boost_INCLUDE_DIRS}
-    ${SharemindCxxHeaders_INCLUDE_DIRS}
-)
-SharemindNewUniqueList(SharemindLibConfiguration_DEFINITIONS
-    ${SharemindCxxHeaders_DEFINITIONS}
-)
 SharemindSetCxx14CompileOptions()
 FILE(GLOB_RECURSE SharemindLibConfiguration_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-SharemindAddSharedLibrary("libconfiguration"
+SharemindAddSharedLibrary(LibConfiguration
     OUTPUT_NAME "sharemind_configuration"
     SOURCES
         ${SharemindLibConfiguration_SOURCES}
         ${SharemindLibConfiguration_HEADERS}
         ${SharemindLibConfiguration_PRIVATE_HEADERS}
-    INCLUDE_DIRECTORIES
-        ${SharemindLibConfiguration_INCLUDE_DIRS}
-    LEGACY_DEFINITIONS
-        ${SharemindLibConfiguration_DEFINITIONS}
-    LINK_LIBRARIES
-        ${SharemindLibConfiguration_LINK_LIBRARIES}
 )
-
-
-# Install CMake files:
-SharemindCreateCMakeFindFiles(
-    INCLUDE_DIRS
-        "${CMAKE_INSTALL_PREFIX}/include"
-        ${SharemindLibConfiguration_INCLUDE_DIRS}
-    DEFINITIONS
-        ${SharemindLibConfiguration_DEFINITIONS}
-    LIBRARIES
-        ${SharemindLibConfiguration_LINK_LIBRARIES}
-        "-L${CMAKE_INSTALL_PREFIX}/lib"
-        "-lsharemind_configuration"
-)
+TARGET_INCLUDE_DIRECTORIES(LibConfiguration
+    INTERFACE
+        # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src> # TODO
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
+    )
+TARGET_LINK_LIBRARIES(LibConfiguration
+    PUBLIC
+        "Boost::boost"
+        "Boost::filesystem"
+        "Sharemind::CxxHeaders"
+    )
+SharemindCreateCMakeFindFilesForTarget(LibConfiguration
+    DEPENDENCIES
+        "Boost 1.62 COMPONENTS filesystem"
+        "SharemindCxxHeaders 0.8.0"
+    )
 
 
 # Tests:
 SharemindAddSimpleTests("${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp"
-    INCLUDE_DIRECTORIES
-        ${SharemindLibConfiguration_INCLUDE_DIRS}
-    LEGACY_DEFINITIONS
-        ${SharemindLibConfiguration_DEFINITIONS}
     LINK_LIBRARIES
-        ${SharemindLibConfiguration_LINK_LIBRARIES}
-        "libconfiguration"
+        LibConfiguration
 )
 
 
@@ -122,7 +99,7 @@ SharemindAddComponentPackage("dev"
     DEB_SECTION "libdevel"
     DEB_DEPENDS
         "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
-        "libsharemind-cxxheaders-dev (>= 0.7.0)"
+        "libsharemind-cxxheaders-dev (>= 0.8.0)"
         "libboost-dev (>= 1.62)"
         "libc6-dev (>= 2.19)"
         "libstdc++-dev"
