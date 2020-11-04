@@ -58,9 +58,10 @@ TARGET_INCLUDE_DIRECTORIES(LibConfiguration
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
     )
 TARGET_LINK_LIBRARIES(LibConfiguration
+    PRIVATE
+        "Boost::filesystem"
     PUBLIC
         "Boost::boost"
-        "Boost::filesystem"
         "Sharemind::CxxHeaders"
     )
 SharemindCreateCMakeFindFilesForTarget(LibConfiguration
