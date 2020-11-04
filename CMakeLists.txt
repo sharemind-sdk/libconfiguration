@@ -25,13 +25,10 @@ INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 
 FIND_PACKAGE(SharemindCMakeHelpers 1.4 REQUIRED)
 
-
-SET(Boost_USE_STATIC_RUNTIME OFF)
-
 # Note: the library also uses Boost::iostreams but that component is not listed
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
-FIND_PACKAGE(Boost COMPONENTS filesystem REQUIRED)
+FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders 0.7.0 REQUIRED)
 
 
@@ -126,7 +123,7 @@ SharemindAddComponentPackage("dev"
     DEB_DEPENDS
         "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
         "libsharemind-cxxheaders-dev (>= 0.7.0)"
-        "libboost-dev (>= 1.50)"
+        "libboost-dev (>= 1.62)"
         "libc6-dev (>= 2.19)"
         "libstdc++-dev"
 )
