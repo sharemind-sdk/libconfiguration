@@ -65,7 +65,7 @@ TARGET_LINK_LIBRARIES(LibConfiguration
     )
 SharemindCreateCMakeFindFilesForTarget(LibConfiguration
     DEPENDENCIES
-        "Boost 1.62 COMPONENTS filesystem"
+        "Boost 1.62"
         "SharemindCxxHeaders 0.8.0"
     )
 
