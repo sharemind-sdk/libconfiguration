@@ -72,10 +72,12 @@ SharemindCreateCMakeFindFilesForTarget(LibConfiguration
 
 
 # Tests:
-SharemindAddSimpleTests("${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp"
-    LINK_LIBRARIES
-        LibConfiguration
-)
+FILE(GLOB LibConfiguration_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/Test*.cpp")
+FOREACH(testFile IN LISTS LibConfiguration_TESTS)
+    GET_FILENAME_COMPONENT(testName "${testFile}" NAME_WE)
+    SharemindAddTest("${testName}" SOURCES "${testFile}")
+    TARGET_LINK_LIBRARIES("${testName}" PRIVATE LibConfiguration)
+ENDFOREACH()
 
 
 # Packaging:
