@@ -42,7 +42,6 @@ LIST(REMOVE_ITEM SharemindLibConfiguration_HEADERS
 INSTALL(FILES ${SharemindLibConfiguration_HEADERS}
         DESTINATION "include/sharemind/libconfiguration"
         COMPONENT "dev")
-SharemindSetCxx14CompileOptions()
 FILE(GLOB_RECURSE SharemindLibConfiguration_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 SharemindAddSharedLibrary(LibConfiguration
