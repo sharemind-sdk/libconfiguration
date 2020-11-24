@@ -54,7 +54,7 @@ SharemindAddSharedLibrary(LibConfiguration
 TARGET_INCLUDE_DIRECTORIES(LibConfiguration
     INTERFACE
         # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src> # TODO
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
+        $<INSTALL_INTERFACE:include>
     )
 TARGET_LINK_LIBRARIES(LibConfiguration
     PRIVATE
