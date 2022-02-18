@@ -29,7 +29,7 @@ FIND_PACKAGE(SharemindCMakeHelpers 1.6 REQUIRED)
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
 FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem REQUIRED)
-FIND_PACKAGE(SharemindCxxHeaders 0.8.0 REQUIRED)
+FIND_PACKAGE(SharemindCxxHeaders 0.9.0 REQUIRED)
 
 
 # LibConfiguration:
