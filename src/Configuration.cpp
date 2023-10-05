@@ -1021,7 +1021,8 @@ void Configuration::Interpolation::resetTime(std::time_t theTime)
 void Configuration::Interpolation::resetTime(::tm const & theTime)
 { m_time = theTime; }
 
-::tm Configuration::Interpolation::getLocalTimeTm() { return getLocalTimeTm(::time(nullptr)); }
+::tm Configuration::Interpolation::getLocalTimeTm()
+{ return getLocalTimeTm(::time(nullptr)); }
 
 ::tm Configuration::Interpolation::getLocalTimeTm(std::time_t const theTime) {
     if (theTime == std::time_t(-1))
