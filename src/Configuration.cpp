@@ -341,8 +341,7 @@ std::string FileParseJob::prepareValue(StringView s) const {
         }
         case '{': {
             auto const escapeStartPos = escapePos + 2u;
-            auto const escapeEndPos =
-                    s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
+            auto const escapeEndPos = s.findFirstOf("{%}"_sv, escapeStartPos);
             if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
                 throw I::InterpolationSyntaxErrorException();
             // Do the replacement:
@@ -988,8 +987,7 @@ std::string Configuration::Interpolation::interpolate(StringView s,
         }
         case '{': {
             auto const escapeStartPos = escapePos + 2u;
-            auto const escapeEndPos =
-                    s.findFirstOf("{%}"_sv, escapeStartPos + 2u);
+            auto const escapeEndPos = s.findFirstOf("{%}"_sv, escapeStartPos);
             if ((escapeEndPos == StringView::npos) || (s[escapeEndPos] != '}'))
                 throw InterpolationSyntaxErrorException();
             auto const matchIt(
