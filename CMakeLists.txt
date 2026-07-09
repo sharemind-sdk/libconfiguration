@@ -91,7 +91,6 @@ SharemindAddComponentPackage("lib"
     DEB_SECTION "libs"
     DEB_DEPENDS
         "libboost-filesystem${BV}"
-        "libboost-system${BV}"
         "libstdc++6 (>= 4.8.0)"
         "libc6 (>= 2.19)"
 )
