@@ -28,7 +28,7 @@ FIND_PACKAGE(SharemindCMakeHelpers 1.6 REQUIRED)
 # Note: the library also uses Boost::iostreams but that component is not listed
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
-FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem REQUIRED)
+FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem CONFIG REQUIRED)
 FIND_PACKAGE(SharemindCxxHeaders 0.10.1 REQUIRED)
 
 
@@ -65,7 +65,7 @@ TARGET_LINK_LIBRARIES(LibConfiguration
     )
 SharemindCreateCMakeFindFilesForTarget(LibConfiguration
     DEPENDENCIES
-        "Boost 1.62"
+        "Boost 1.62 CONFIG"
         "SharemindCxxHeaders 0.10.1"
     )
 
