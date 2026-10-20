@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 Cybernetica
+# Copyright (C) Cybernetica
 #
 # Research/Commercial License Usage
 # Licensees holding a valid Research License or Commercial License
@@ -18,18 +18,18 @@
 #
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.18)
-PROJECT(SharemindLibConfiguration VERSION 0.6.0 LANGUAGES CXX)
+PROJECT(SharemindLibConfiguration VERSION 0.6.1 LANGUAGES CXX)
 
 INCLUDE("${CMAKE_CURRENT_SOURCE_DIR}/config.local" OPTIONAL)
 INCLUDE("${CMAKE_CURRENT_BINARY_DIR}/config.local" OPTIONAL)
 
-FIND_PACKAGE(SharemindCMakeHelpers 1.6 REQUIRED)
+FIND_PACKAGE(SharemindCMakeHelpers 1.8 REQUIRED)
 
 # Note: the library also uses Boost::iostreams but that component is not listed
 # here, because only the header-only part of Boost::iostreams is used. We do
 # not want to link against libboost_iostreams and libboost_regex.
 FIND_PACKAGE(Boost 1.62 COMPONENTS filesystem CONFIG REQUIRED)
-FIND_PACKAGE(SharemindCxxHeaders 0.10.1 REQUIRED)
+FIND_PACKAGE(SharemindCxxHeaders 0.11.0 REQUIRED)
 
 
 # LibConfiguration:
@@ -66,7 +66,7 @@ TARGET_LINK_LIBRARIES(LibConfiguration
 SharemindCreateCMakeFindFilesForTarget(LibConfiguration
     DEPENDENCIES
         "Boost 1.62 CONFIG"
-        "SharemindCxxHeaders 0.10.1"
+        "SharemindCxxHeaders 0.11.0"
     )
 
 
@@ -100,7 +100,7 @@ SharemindAddComponentPackage("dev"
     DEB_SECTION "libdevel"
     DEB_DEPENDS
         "libsharemind-configuration (= ${SharemindLibConfiguration_DEB_lib_PACKAGE_VERSION})"
-        "libsharemind-cxxheaders-dev (>= 0.10.1)"
+        "libsharemind-cxxheaders-dev (>= 0.11.0)"
         "libboost-dev (>= 1.62)"
         "libc6-dev (>= 2.19)"
         "libstdc++-dev"
